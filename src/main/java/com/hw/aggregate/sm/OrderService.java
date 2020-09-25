@@ -1,10 +1,7 @@
 package com.hw.aggregate.sm;
 
 import com.hw.aggregate.sm.command.CreateBizStateMachineCommand;
-import com.hw.aggregate.sm.model.order.AppCreateBizOrderCommand;
-import com.hw.aggregate.sm.model.order.AppValidateBizOrderCommand;
-import com.hw.aggregate.sm.model.order.BizOrderItem;
-import com.hw.aggregate.sm.model.order.BizOrderStatus;
+import com.hw.aggregate.sm.model.order.*;
 import com.hw.shared.EurekaRegistryHelper;
 import com.hw.shared.ResourceServiceTokenHelper;
 import lombok.AllArgsConstructor;
@@ -29,10 +26,10 @@ public class OrderService {
     @Autowired
     private EurekaRegistryHelper eurekaRegistryHelper;
 
+    @Value("${url.orders.app.validate}")
+    private String orderValidateUrl;
     @Value("${url.orders.app}")
     private String orderUrl;
-    @Value("${url.orders.app.create}")
-    private String orderUrl2;
 
     @Value("${url.orders.change.app}")
     private String changeUrl;
@@ -45,37 +42,48 @@ public class OrderService {
             HttpHeaders headers = new HttpHeaders();
             AppValidateBizOrderCommand appValidateBizOrderCommand = new AppValidateBizOrderCommand();
             appValidateBizOrderCommand.setProductList(productList);
-            HttpEntity<AppValidateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appValidateBizOrderCommand,headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl , HttpMethod.POST, hashMapHttpEntity, String.class);
+            HttpEntity<AppValidateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appValidateBizOrderCommand, headers);
+            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderValidateUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
         } catch (Exception e) {
             log.error("validateOrder", e);
             throw e;
         }
     }
 
-    public void saveOrder(long id, String paymentLink, BizOrderStatus status, boolean paymentStatus, String changeId) {
+    public void saveConcludeOrder(CreateBizStateMachineCommand machineCommand, BizOrderStatus status) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.add(HTTP_HEADER_CHANGE_ID, changeId);
-            AppCreateBizOrderCommand appCreateBizOrderCommand = new AppCreateBizOrderCommand();
-//            appCreateBizOrderCommand.setAddress(command.getAddress());
-//            appCreateBizOrderCommand.setCreatedBy(command.getCreatedBy());
-//            appCreateBizOrderCommand.setOrderId(command.getOrderId());
-//            appCreateBizOrderCommand.setOrderState(status);
-//            appCreateBizOrderCommand.setPaymentAmt(command.getPaymentAmt());
-//            appCreateBizOrderCommand.setPaymentType(command.getPaymentType());
-//            appCreateBizOrderCommand.setPaymentLink(paymentLink);
-//            appCreateBizOrderCommand.setProductList(command.getProductList());
-//            appCreateBizOrderCommand.setUserId(command.getUserId());
-            HttpEntity<AppCreateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl , HttpMethod.PATCH, hashMapHttpEntity, String.class);
+            headers.add(HTTP_HEADER_CHANGE_ID, machineCommand.getTxId());
+            AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
+            appCreateBizOrderCommand.setOrderId(machineCommand.getOrderId());
+            appCreateBizOrderCommand.setOrderState(status);
+            appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
+            HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl, HttpMethod.PUT, hashMapHttpEntity, String.class);
         } catch (Exception e) {
             log.error("updateOrder", e);
             throw e;
         }
     }
-    public void saveOrder(String paymentLink, BizOrderStatus status, CreateBizStateMachineCommand command) {
+
+    public void saveReservedOrder(CreateBizStateMachineCommand machineCommand, BizOrderStatus status) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.add(HTTP_HEADER_CHANGE_ID, machineCommand.getTxId());
+            AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
+            appCreateBizOrderCommand.setOrderId(machineCommand.getOrderId());
+            appCreateBizOrderCommand.setOrderState(status);
+            HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl, HttpMethod.PUT, hashMapHttpEntity, String.class);
+        } catch (Exception e) {
+            log.error("updateOrder", e);
+            throw e;
+        }
+    }
+
+    public void saveNewOrder(String paymentLink, BizOrderStatus status, CreateBizStateMachineCommand command) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -91,7 +99,24 @@ public class OrderService {
             appCreateBizOrderCommand.setProductList(command.getProductList());
             appCreateBizOrderCommand.setUserId(command.getUserId());
             HttpEntity<AppCreateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl2 , HttpMethod.POST, hashMapHttpEntity, String.class);
+            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
+        } catch (Exception e) {
+            log.error("updateOrder", e);
+            throw e;
+        }
+    }
+
+    public void savePaidOrder(CreateBizStateMachineCommand command, BizOrderStatus status) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
+            AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
+            appCreateBizOrderCommand.setOrderId(command.getOrderId());
+            appCreateBizOrderCommand.setOrderState(status);
+            appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
+            HttpEntity<com.hw.aggregate.sm.model.order.AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
         } catch (Exception e) {
             log.error("updateOrder", e);
             throw e;
@@ -108,14 +133,5 @@ public class OrderService {
             log.error("rollbackTransaction", e);
             throw e;
         }
-    }
-
-    @Data
-    @AllArgsConstructor
-    public static class AppUpdateBizOrderCommand {
-        private String paymentLink;
-        private BizOrderStatus status;
-        private boolean paymentStatus;
-
     }
 }
