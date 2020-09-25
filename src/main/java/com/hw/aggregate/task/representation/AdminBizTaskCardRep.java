@@ -1,6 +1,6 @@
 package com.hw.aggregate.task.representation;
 
-import com.hw.aggregate.sm.model.BizOrderEvent;
+import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.task.model.BizTask;
 import com.hw.aggregate.task.model.BizTaskStatus;
 import lombok.Data;

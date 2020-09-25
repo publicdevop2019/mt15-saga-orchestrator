@@ -1,6 +1,6 @@
 package com.hw.aggregate.task.command;
 
-import com.hw.aggregate.sm.model.BizOrderEvent;
+import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import lombok.Data;
 
 @Data

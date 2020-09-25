@@ -3,6 +3,8 @@ package com.hw.aggregate.sm.model;
 import com.hw.aggregate.sm.*;
 import com.hw.aggregate.sm.command.CreateBizStateMachineCommand;
 import com.hw.aggregate.sm.exception.*;
+import com.hw.aggregate.sm.model.order.BizOrderEvent;
+import com.hw.aggregate.sm.model.order.BizOrderStatus;
 import com.hw.aggregate.task.AppBizTaskApplicationService;
 import com.hw.aggregate.task.command.AppCreateBizTaskCommand;
 import com.hw.aggregate.task.command.AppUpdateBizTaskCommand;
@@ -24,11 +26,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 import javax.persistence.EntityManager;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static com.hw.aggregate.sm.BizStateMachineApplicationService.BIZ_ORDER;
+import static com.hw.aggregate.sm.AppBizStateMachineApplicationService.BIZ_ORDER;
 
 /**
  * each guard is an unit of work, roll back when failure happen
@@ -54,7 +55,7 @@ public class CustomStateMachineBuilder {
     private CartService cartService;
 
     @Autowired
-    private BizStateMachineApplicationService stateMachineApplicationService;
+    private AppBizStateMachineApplicationService stateMachineApplicationService;
     ;
 
     @Autowired
@@ -186,7 +187,7 @@ public class CustomStateMachineBuilder {
             );
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.updateOrder(null, context.getTarget().getId(), false, appBizTaskRep.getTransactionId()), customExecutor
+                    orderService.saveOrder(bizOrder.getOrderId(), null, context.getTarget().getId(), false, appBizTaskRep.getTransactionId()), customExecutor
             );
             CompletableFuture<Void> allDoneFuture2 = CompletableFuture.allOf(decreaseOrderStorageFuture, updateTaskFuture, updateOrderFuture);
             try {
@@ -220,7 +221,7 @@ public class CustomStateMachineBuilder {
                 appCreateBizTaskCommand.setReferenceId(customerOrder.getOrderId());
                 appCreateBizTaskCommand.setTaskName(event);
                 appCreateBizTaskCommand.setTransactionId(txId);
-                CreatedEntityRep createdEntityRep = appBizTaskApplicationService.create(appCreateBizTaskCommand, UUID.randomUUID().toString());
+                CreatedEntityRep createdEntityRep = appBizTaskApplicationService.create(appCreateBizTaskCommand, customerOrder.getTxId());
                 context.getExtendedState().getVariables().put(TX_TASK, createdEntityRep);
             } catch (Exception ex) {
                 log.error("error during data persist", ex);
@@ -247,9 +248,9 @@ public class CustomStateMachineBuilder {
             CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
             AppBizTaskRep appBizTaskRep = appBizTaskApplicationService.readById(transactionalTask.getId());
             log.info("start of prepareNewOrder of {}", bizOrder.getOrderId());
-            // validate order product info
+            // validate product info
             CompletableFuture<Void> validateResultFuture = CompletableFuture.runAsync(() ->
-                    orderService.validateProduct(bizOrder.getOrderId()), customExecutor
+                    orderService.validateOrder(bizOrder.getProductList()), customExecutor
             );
 
             // generate payment QR link
@@ -288,7 +289,7 @@ public class CustomStateMachineBuilder {
                 if (decreaseOrderStorageFuture.isCompletedExceptionally())
                     context.getStateMachine().setStateMachineError(new BizOrderStorageDecreaseException());
                 if (validateResultFuture.isCompletedExceptionally())
-                    context.getStateMachine().setStateMachineError(new ProductInfoValidationException());
+                    context.getStateMachine().setStateMachineError(new BizOrderValidationException());
                 if (clearCartFuture.isCompletedExceptionally())
                     context.getStateMachine().setStateMachineError(new CartClearException());
                 if (updateTaskFuture.isCompletedExceptionally())
@@ -302,7 +303,7 @@ public class CustomStateMachineBuilder {
             }
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.updateOrder(paymentLink, context.getTarget().getId(), false, appBizTaskRep.getTransactionId()), customExecutor
+                            orderService.saveOrder(paymentLink, context.getTarget().getId(), bizOrder), customExecutor
             );
             CompletableFuture<Void> allDoneFuture2 = CompletableFuture.allOf(updateOrderFuture);
             try {
@@ -344,7 +345,7 @@ public class CustomStateMachineBuilder {
             );
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.updateOrder(null, context.getTarget().getId(), false, appBizTaskRep.getTransactionId()), customExecutor
+                    orderService.saveOrder(bizOrder.getOrderId(), null, context.getTarget().getId(), false, appBizTaskRep.getTransactionId()), customExecutor
             );
             CompletableFuture<Void> allDoneFuture2 = CompletableFuture.allOf(decreaseOrderStorageFuture, updateTaskFuture, updateOrderFuture);
             try {
@@ -396,7 +397,7 @@ public class CustomStateMachineBuilder {
             );
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.updateOrder(null, context.getTarget().getId(), false, appBizTaskRep.getTransactionId()), customExecutor
+                    orderService.saveOrder(bizOrder.getOrderId(), null, context.getTarget().getId(), false, appBizTaskRep.getTransactionId()), customExecutor
             );
             CompletableFuture<Void> allDoneFuture2 = CompletableFuture.allOf(decreaseActualStorageFuture, updateTaskFuture, updateOrderFuture);
             try {
@@ -444,7 +445,7 @@ public class CustomStateMachineBuilder {
 
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.updateOrder(null, context.getTarget().getId(), true, appBizTaskRep.getTransactionId()), customExecutor
+                    orderService.saveOrder(bizOrder.getOrderId(), null, context.getTarget().getId(), true, appBizTaskRep.getTransactionId()), customExecutor
             );
 
             CompletableFuture<Void> allDoneFuture2 = CompletableFuture.allOf(confirmPaymentFuture, updateTaskFuture, updateOrderFuture);

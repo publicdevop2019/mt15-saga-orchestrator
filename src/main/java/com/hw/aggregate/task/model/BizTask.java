@@ -1,6 +1,6 @@
 package com.hw.aggregate.task.model;
 
-import com.hw.aggregate.sm.model.BizOrderEvent;
+import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.task.command.AppCreateBizTaskCommand;
 import com.hw.aggregate.task.command.AppUpdateBizTaskCommand;
 import com.hw.shared.Auditable;

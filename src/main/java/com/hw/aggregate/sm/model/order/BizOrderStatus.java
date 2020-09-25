@@ -1,4 +1,4 @@
-package com.hw.aggregate.sm.model;
+package com.hw.aggregate.sm.model.order;
 
 import com.hw.shared.EnumDBConverter;
 

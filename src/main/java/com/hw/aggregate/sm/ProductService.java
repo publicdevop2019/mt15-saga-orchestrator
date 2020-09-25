@@ -35,18 +35,28 @@ public class ProductService {
 
 
     public void updateProductStorage(List<PatchCommand> changeList, String txId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add(HTTP_HEADER_CHANGE_ID, txId);
-        HttpEntity<List<PatchCommand>> hashMapHttpEntity = new HttpEntity<>(changeList, headers);
-        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + productUrl, HttpMethod.PATCH, hashMapHttpEntity, String.class);
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.add(HTTP_HEADER_CHANGE_ID, txId);
+            HttpEntity<List<PatchCommand>> hashMapHttpEntity = new HttpEntity<>(changeList, headers);
+            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + productUrl, HttpMethod.PATCH, hashMapHttpEntity, String.class);
+        } catch (Exception e) {
+            log.error("rollbackTransaction", e);
+            throw e;
+        }
     }
 
     public void rollbackTransaction(String changeId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
-        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + HTTP_HEADER_CHANGE_ID + ":" + changeId, HttpMethod.DELETE, hashMapHttpEntity, String.class);
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
+            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + HTTP_HEADER_CHANGE_ID + ":" + changeId, HttpMethod.DELETE, hashMapHttpEntity, String.class);
+        } catch (Exception e) {
+            log.error("rollbackTransaction", e);
+            throw e;
+        }
     }
 
 }

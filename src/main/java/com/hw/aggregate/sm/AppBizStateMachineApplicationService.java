@@ -1,8 +1,8 @@
 package com.hw.aggregate.sm;
 
 import com.hw.aggregate.sm.command.CreateBizStateMachineCommand;
-import com.hw.aggregate.sm.model.BizOrderEvent;
-import com.hw.aggregate.sm.model.BizOrderStatus;
+import com.hw.aggregate.sm.model.order.BizOrderEvent;
+import com.hw.aggregate.sm.model.order.BizOrderStatus;
 import com.hw.aggregate.sm.model.CustomStateMachineBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.statemachine.StateMachine;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import static com.hw.aggregate.sm.model.CustomStateMachineEventListener.ERROR_CLASS;
 
 @Service
-public class BizStateMachineApplicationService {
+public class AppBizStateMachineApplicationService {
     public static final String BIZ_ORDER = "BizOrder";
     @Autowired
     private CustomStateMachineBuilder customStateMachineBuilder;
