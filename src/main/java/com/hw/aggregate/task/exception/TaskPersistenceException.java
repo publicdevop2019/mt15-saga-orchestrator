@@ -1,4 +1,4 @@
-package com.hw.aggregate.sm.exception;
+package com.hw.aggregate.task.exception;
 
 public class TaskPersistenceException extends RuntimeException {
 }

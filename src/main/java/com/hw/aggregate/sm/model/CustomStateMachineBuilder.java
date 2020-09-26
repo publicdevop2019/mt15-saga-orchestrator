@@ -8,6 +8,7 @@ import com.hw.aggregate.sm.model.order.BizOrderStatus;
 import com.hw.aggregate.task.AppBizTaskApplicationService;
 import com.hw.aggregate.task.command.AppCreateBizTaskCommand;
 import com.hw.aggregate.task.command.AppUpdateBizTaskCommand;
+import com.hw.aggregate.task.exception.TaskPersistenceException;
 import com.hw.aggregate.task.model.BizTaskStatus;
 import com.hw.aggregate.task.representation.AppBizTaskRep;
 import com.hw.shared.IdGenerator;
@@ -273,7 +274,7 @@ public class CustomStateMachineBuilder {
 
             // clear cart
             CompletableFuture<Void> clearCartFuture = CompletableFuture.runAsync(() ->
-                    cartService.clearCart(stateMachineCommand.getOrderId(), stateMachineCommand.getUserId(), transactionalTask.getId()), customExecutor
+                    cartService.clearCart(stateMachineCommand.getUserId(), appBizTaskRep.getTransactionId()), customExecutor
             );
 
             // update task

@@ -52,7 +52,7 @@ public class CustomStateMachineEventListener
 
     @Override
     public void stateMachineError(StateMachine<BizOrderStatus, BizOrderEvent> stateMachine, Exception exception) {
-        log.error("start of stateMachineError, rollback transaction", exception);
+        log.error("start of stateMachineError, rollback transaction");
         //set error class so it can be thrown later, thrown ex here will still result 200 response
         stateMachine.getExtendedState().getVariables().put(ERROR_CLASS, exception);
 //        CreatedEntityRep createdTask = stateMachine.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
