@@ -55,14 +55,14 @@ public class CustomStateMachineEventListener
         log.error("start of stateMachineError, rollback transaction", exception);
         //set error class so it can be thrown later, thrown ex here will still result 200 response
         stateMachine.getExtendedState().getVariables().put(ERROR_CLASS, exception);
-        CreatedEntityRep createdTask = stateMachine.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
-        if (createdTask != null) {
-            AppBizTaskRep appBizTaskRep = taskService.readById(createdTask.getId());
-            String[] split = exception.getClass().getName().split("\\.");
-            rollback(createdTask, appBizTaskRep, split[split.length - 1]);
-        } else {
-            log.info("error happened in non-transactional context, no rollback will be triggered");
-        }
+//        CreatedEntityRep createdTask = stateMachine.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
+//        if (createdTask != null) {
+//            AppBizTaskRep appBizTaskRep = taskService.readById(createdTask.getId());
+//            String[] split = exception.getClass().getName().split("\\.");
+//            rollback(createdTask, appBizTaskRep, split[split.length - 1]);
+//        } else {
+//            log.info("error happened in non-transactional context, no rollback will be triggered");
+//        }
     }
 
     private void rollback(CreatedEntityRep entityRep, AppBizTaskRep taskRep, String exceptionName) {

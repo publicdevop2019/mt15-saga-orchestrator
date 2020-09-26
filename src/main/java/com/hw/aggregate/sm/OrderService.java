@@ -4,8 +4,6 @@ import com.hw.aggregate.sm.command.CreateBizStateMachineCommand;
 import com.hw.aggregate.sm.model.order.*;
 import com.hw.shared.EurekaRegistryHelper;
 import com.hw.shared.ResourceServiceTokenHelper;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -60,7 +58,7 @@ public class OrderService {
             appCreateBizOrderCommand.setOrderState(status);
             appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
             HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl, HttpMethod.PUT, hashMapHttpEntity, String.class);
+            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
         } catch (Exception e) {
             log.error("updateOrder", e);
             throw e;
@@ -76,7 +74,7 @@ public class OrderService {
             appCreateBizOrderCommand.setOrderId(machineCommand.getOrderId());
             appCreateBizOrderCommand.setOrderState(status);
             HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl, HttpMethod.PUT, hashMapHttpEntity, String.class);
+            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
         } catch (Exception e) {
             log.error("updateOrder", e);
             throw e;
@@ -116,7 +114,7 @@ public class OrderService {
             appCreateBizOrderCommand.setOrderState(status);
             appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
             HttpEntity<com.hw.aggregate.sm.model.order.AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
+            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + command.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
         } catch (Exception e) {
             log.error("updateOrder", e);
             throw e;

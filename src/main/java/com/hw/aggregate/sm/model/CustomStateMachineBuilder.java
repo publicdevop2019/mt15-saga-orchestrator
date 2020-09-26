@@ -26,6 +26,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import javax.persistence.EntityManager;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -99,6 +100,11 @@ public class CustomStateMachineBuilder {
                     .source(BizOrderStatus.DRAFT).target(BizOrderStatus.NOT_PAID_RESERVED)
                     .event(BizOrderEvent.NEW_ORDER)
                     .guard(createOrderTx())
+                    .and()
+                    .withInternal()
+                    .source(BizOrderStatus.NOT_PAID_RESERVED)
+                    .event(BizOrderEvent.PREPARE_CONFIRM_PAYMENT)
+                    .action(prepareTaskFor(BizOrderEvent.CONFIRM_PAYMENT))
                     .and()
                     .withExternal()
                     .source(BizOrderStatus.NOT_PAID_RESERVED).target(BizOrderStatus.PAID_RESERVED)
@@ -235,7 +241,9 @@ public class CustomStateMachineBuilder {
                     log.info("start of auto conclude");
                     CreateBizStateMachineCommand bizOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
                     bizOrder.setBizOrderEvent(BizOrderEvent.CONFIRM_ORDER);
-                    bizOrder.setOrderState(BizOrderStatus.PAID_RESERVED);
+                    bizOrder.setPrepareEvent(BizOrderEvent.PREPARE_CONFIRM_ORDER);
+                    bizOrder.setTxId(UUID.randomUUID().toString());
+                    bizOrder.setOrderState(context.getTarget().getId());
                     stateMachineApplicationService.start(bizOrder);
                 }
                 , customExecutor
