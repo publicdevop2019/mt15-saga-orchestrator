@@ -157,7 +157,7 @@ public class CustomStateMachineBuilder {
                     .and()
                     .withInternal()
                     .source(BizOrderStatus.NOT_PAID_RESERVED)
-                    .event(BizOrderEvent.RECYCLE_ORDER_STORAGE)
+                    .event(BizOrderEvent.PREPARE_RECYCLE_ORDER_STORAGE)
                     .action(prepareTaskFor(BizOrderEvent.PREPARE_RECYCLE_ORDER_STORAGE))
                     .and()
                     .withExternal()
@@ -196,6 +196,7 @@ public class CustomStateMachineBuilder {
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
                     orderService.saveConcludeOrder(machineCommand, context.getTarget().getId()), customExecutor
             );
+
             CompletableFuture<Void> allDoneFuture2 = CompletableFuture.allOf(decreaseOrderStorageFuture, updateTaskFuture, updateOrderFuture);
             try {
                 allDoneFuture2.get();

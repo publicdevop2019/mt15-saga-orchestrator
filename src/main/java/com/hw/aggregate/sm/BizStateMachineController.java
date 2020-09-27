@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping(produces = "application/json", path = "sm")
 public class BizStateMachineController {
@@ -15,8 +17,12 @@ public class BizStateMachineController {
     private AppBizStateMachineApplicationService appBizStateMachineApplicationService;
 
     @PostMapping("app")
-    public ResponseEntity<Void> createForApp(@RequestBody CreateBizStateMachineCommand command) {
-        appBizStateMachineApplicationService.start(command);
+    public ResponseEntity<Void> createForApp(@RequestBody List<CreateBizStateMachineCommand> commands) {
+        if (commands.size() > 1) {
+            appBizStateMachineApplicationService.startBatch(commands);
+        } else {
+            appBizStateMachineApplicationService.start(commands.get(0));
+        }
         return ResponseEntity.ok().build();
     }
 }

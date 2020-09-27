@@ -18,7 +18,7 @@ public class BizTask extends Auditable implements IdBasedEntity {
     @Id
     private Long id;
 
-    @Column(length = 25)
+    @Column(length = 50)
     @Convert(converter = BizOrderEvent.DBConverter.class)
     private BizOrderEvent taskName;
     public static final String ENTITY_TASK_NAME = "taskName";
