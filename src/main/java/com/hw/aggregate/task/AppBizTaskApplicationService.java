@@ -12,6 +12,7 @@ import com.hw.shared.rest.CreatedEntityRep;
 import com.hw.shared.rest.DefaultRoleBasedRestfulService;
 import com.hw.shared.rest.VoidTypedClass;
 import com.hw.shared.sql.RestfulQueryRegistry;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -19,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
 import java.util.Map;
-
+@Slf4j
 @Service
 public class AppBizTaskApplicationService extends DefaultRoleBasedRestfulService<BizTask, Void, AppBizTaskRep, VoidTypedClass> {
     @Autowired
@@ -47,6 +48,7 @@ public class AppBizTaskApplicationService extends DefaultRoleBasedRestfulService
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CreatedEntityRep create(Object command, String changeId) {
+        log.debug("creating task");
         return super.create(command,changeId);
     }
 

@@ -5,7 +5,7 @@ import com.hw.aggregate.sm.exception.BizJobLauncherException;
 import com.hw.aggregate.sm.model.CustomStateMachineBuilder;
 import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.sm.model.order.BizOrderStatus;
-import com.hw.config.ReleaseJobContext;
+import com.hw.config.batch.ReleaseJobContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;

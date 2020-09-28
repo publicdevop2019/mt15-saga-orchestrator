@@ -1,4 +1,4 @@
-package com.hw.config;
+package com.hw.config.batch;
 
 import com.hw.aggregate.sm.AppBizStateMachineApplicationService;
 import com.hw.aggregate.sm.command.CreateBizStateMachineCommand;

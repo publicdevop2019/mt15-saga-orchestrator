@@ -1,4 +1,4 @@
-package com.hw.config;
+package com.hw.config.batch;
 
 import com.hw.aggregate.sm.command.CreateBizStateMachineCommand;
 import org.springframework.batch.core.Job;
@@ -12,6 +12,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.transaction.PlatformTransactionManager;
+
+import javax.persistence.EntityManagerFactory;
 
 @Configuration
 @EnableBatchProcessing
@@ -39,14 +43,12 @@ public class BatchConfig {
     @Autowired
     @Qualifier("CustomPool")
     private TaskExecutor customExecutor;
-//    @Bean
-//    public AsyncItemProcessor<CreateBizStateMachineCommand, CreateBizStateMachineCommand> asyncProcessor() {
-//        AsyncItemProcessor<CreateBizStateMachineCommand, CreateBizStateMachineCommand> asyncItemProcessor = new AsyncItemProcessor<>();
-//        asyncItemProcessor.setDelegate(itemProcessor());
-//        asyncItemProcessor.setTaskExecutor(taskExecutor());
-//
-//        return asyncItemProcessor;
-//    }
+
+    @Autowired
+    JobLauncher jobLauncher;
+    @Autowired
+    EntityManagerFactory entityManagerFactory;
+
 
     @Bean
     public Job releaseExpireOrder(JobCompletionNotificationListener listener, Step step1) {
@@ -59,7 +61,7 @@ public class BatchConfig {
 
     @Bean
     public Step release() {
-        return stepBuilderFactory.get("step1")
+        return stepBuilderFactory.get("release")
                 .<CreateBizStateMachineCommand, CreateBizStateMachineCommand>chunk(10)
                 .reader(expireOrderItemReader)
                 .processor(processor())
@@ -71,10 +73,16 @@ public class BatchConfig {
     public BatchConfigurer batchConfigurer() {
         return new DefaultBatchConfigurer() {
             @Override
+            public PlatformTransactionManager getTransactionManager() {
+                return new JpaTransactionManager(entityManagerFactory);// use this otherwise async will not work -> no transaction enabled
+            }
+
+            @Override
             protected JobLauncher createJobLauncher() throws Exception {
                 SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
                 jobLauncher.setJobRepository(jobRepository);
                 jobLauncher.setTaskExecutor(customExecutor);
+                jobLauncher.afterPropertiesSet();
                 return jobLauncher;
             }
         };

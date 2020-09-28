@@ -1,4 +1,4 @@
-package com.hw.config;
+package com.hw.config.batch;
 
 import com.hw.aggregate.sm.command.CreateBizStateMachineCommand;
 import org.springframework.batch.item.*;
@@ -12,7 +12,6 @@ import org.springframework.web.context.WebApplicationContext;
 import java.util.List;
 
 @Component
-@Scope(value = WebApplicationContext.SCOPE_REQUEST, proxyMode = ScopedProxyMode.TARGET_CLASS)
 public class ExpireOrderItemWriter implements ItemWriter<CreateBizStateMachineCommand> {
 
     @Override
