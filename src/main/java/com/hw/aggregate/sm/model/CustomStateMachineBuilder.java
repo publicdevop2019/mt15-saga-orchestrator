@@ -157,7 +157,7 @@ public class CustomStateMachineBuilder {
                     .withInternal()
                     .source(BizOrderStatus.NOT_PAID_RESERVED)
                     .event(BizOrderEvent.PREPARE_RECYCLE_ORDER_STORAGE)
-                    .action(prepareTaskFor(BizOrderEvent.PREPARE_RECYCLE_ORDER_STORAGE))
+                    .action(prepareTaskFor(BizOrderEvent.RECYCLE_ORDER_STORAGE))
                     .and()
                     .withExternal()
                     .source(BizOrderStatus.NOT_PAID_RESERVED).target(BizOrderStatus.NOT_PAID_RECYCLED)
