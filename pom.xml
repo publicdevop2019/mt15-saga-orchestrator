@@ -28,6 +28,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-batch</artifactId>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.springframework.batch/spring-batch-integration -->
+        <dependency>
+            <groupId>org.springframework.batch</groupId>
+            <artifactId>spring-batch-integration</artifactId>
+            <version>4.2.4.RELEASE</version>
+        </dependency>
 
     </dependencies>
 </project>

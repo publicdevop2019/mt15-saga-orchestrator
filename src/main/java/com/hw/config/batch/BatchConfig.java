@@ -7,6 +7,8 @@ import org.springframework.batch.core.configuration.annotation.*;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.support.SimpleJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.integration.async.AsyncItemProcessor;
+import org.springframework.batch.integration.async.AsyncItemWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -16,6 +18,7 @@ import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.persistence.EntityManagerFactory;
+import java.util.concurrent.Future;
 
 @Configuration
 @EnableBatchProcessing
@@ -35,11 +38,6 @@ public class BatchConfig {
     @Autowired
     private ExpireOrderItemWriter expireOrderItemWriter;
 
-    @Bean
-    public ExpireOrderProcessor processor() {
-        return new ExpireOrderProcessor();
-    }
-
     @Autowired
     @Qualifier("CustomPool")
     private TaskExecutor customExecutor;
@@ -48,7 +46,8 @@ public class BatchConfig {
     JobLauncher jobLauncher;
     @Autowired
     EntityManagerFactory entityManagerFactory;
-
+    @Autowired
+    ExpireOrderProcessor expireOrderProcessor;
 
     @Bean
     public Job releaseExpireOrder(JobCompletionNotificationListener listener, Step step1) {
@@ -60,12 +59,28 @@ public class BatchConfig {
     }
 
     @Bean
+    public AsyncItemWriter<CreateBizStateMachineCommand> asyncWriter() {
+        AsyncItemWriter<CreateBizStateMachineCommand> asyncItemWriter = new AsyncItemWriter<>();
+        asyncItemWriter.setDelegate(expireOrderItemWriter);
+        return asyncItemWriter;
+    }
+
+    @Bean
+    public AsyncItemProcessor<CreateBizStateMachineCommand, CreateBizStateMachineCommand> asyncProcessor() {
+        AsyncItemProcessor<CreateBizStateMachineCommand, CreateBizStateMachineCommand> asyncItemProcessor = new AsyncItemProcessor<>();
+        asyncItemProcessor.setDelegate(expireOrderProcessor);
+        asyncItemProcessor.setTaskExecutor(customExecutor);
+
+        return asyncItemProcessor;
+    }
+
+    @Bean
     public Step release() {
         return stepBuilderFactory.get("release")
-                .<CreateBizStateMachineCommand, CreateBizStateMachineCommand>chunk(10)
+                .<CreateBizStateMachineCommand, Future<CreateBizStateMachineCommand>>chunk(10)
                 .reader(expireOrderItemReader)
-                .processor(processor())
-                .writer(expireOrderItemWriter)
+                .processor(asyncProcessor())
+                .writer(asyncWriter())
                 .build();
     }
 
