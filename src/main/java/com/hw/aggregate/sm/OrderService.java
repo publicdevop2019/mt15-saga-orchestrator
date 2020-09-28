@@ -113,7 +113,7 @@ public class OrderService {
             appCreateBizOrderCommand.setOrderId(command.getOrderId());
             appCreateBizOrderCommand.setOrderState(status);
             appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
-            HttpEntity<com.hw.aggregate.sm.model.order.AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+            HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
             tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + command.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
         } catch (Exception e) {
             log.error("updateOrder", e);
@@ -129,6 +129,22 @@ public class OrderService {
             tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + HTTP_HEADER_CHANGE_ID + ":" + changeId, HttpMethod.DELETE, hashMapHttpEntity, String.class);
         } catch (Exception e) {
             log.error("rollbackTransaction", e);
+            throw e;
+        }
+    }
+
+    public void saveRecycleOrder(CreateBizStateMachineCommand command, BizOrderStatus id) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
+            AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
+            appCreateBizOrderCommand.setOrderId(command.getOrderId());
+            appCreateBizOrderCommand.setOrderState(id);
+            HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + command.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
+        } catch (Exception e) {
+            log.error("updateOrder", e);
             throw e;
         }
     }

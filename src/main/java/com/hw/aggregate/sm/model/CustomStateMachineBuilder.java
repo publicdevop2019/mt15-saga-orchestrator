@@ -194,7 +194,7 @@ public class CustomStateMachineBuilder {
             );
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.saveConcludeOrder(machineCommand, context.getTarget().getId()), customExecutor
+                    orderService.saveRecycleOrder(machineCommand, context.getTarget().getId()), customExecutor
             );
 
             CompletableFuture<Void> allDoneFuture2 = CompletableFuture.allOf(decreaseOrderStorageFuture, updateTaskFuture, updateOrderFuture);
@@ -335,7 +335,7 @@ public class CustomStateMachineBuilder {
 
     private Guard<BizOrderStatus, BizOrderEvent> reserveOrderTx() {
         return context -> {
-            log.info("start of decreaseOrderStorage");
+            log.info("start of reserveOrderTx");
             CreateBizStateMachineCommand stateMachineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
             CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
             AppBizTaskRep appBizTaskRep = appBizTaskApplicationService.readById(transactionalTask.getId());
