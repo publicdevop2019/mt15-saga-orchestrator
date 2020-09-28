@@ -38,10 +38,11 @@ public class DomainExceptionHandler extends ResponseEntityExceptionHandler {
             PaymentQRLinkGenerationException.class,
             BizOrderResubmitException.class,
             ActualStorageDecreaseException.class,
-            BizOrderPersistenceException.class,
+            BizOrderUpdateException.class,
             StateMachineCreationException.class,
             StateMachineExecutionException.class,
             TaskPersistenceException.class,
+            MultipleStateMachineException.class,
             BizJobLauncherException.class,
     })
     protected ResponseEntity<Object> handle500Exception(RuntimeException ex, WebRequest request) {

@@ -8,17 +8,22 @@ import com.hw.aggregate.task.model.BizTaskQueryRegistry;
 import com.hw.aggregate.task.representation.AppBizTaskRep;
 import com.hw.shared.IdGenerator;
 import com.hw.shared.idempotent.AppChangeRecordApplicationService;
+import com.hw.shared.idempotent.OperationType;
 import com.hw.shared.rest.CreatedEntityRep;
 import com.hw.shared.rest.DefaultRoleBasedRestfulService;
 import com.hw.shared.rest.VoidTypedClass;
 import com.hw.shared.sql.RestfulQueryRegistry;
+import com.hw.shared.sql.SumPagedRep;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
+import javax.persistence.EntityManager;
 import java.util.Map;
 @Slf4j
 @Service
@@ -33,7 +38,8 @@ public class AppBizTaskApplicationService extends DefaultRoleBasedRestfulService
     private ObjectMapper objectMapper;
     @Autowired
     private BizTaskRepository repo2;
-
+    @Autowired
+    private EntityManager entityManager;
 
     @PostConstruct
     private void setUp() {

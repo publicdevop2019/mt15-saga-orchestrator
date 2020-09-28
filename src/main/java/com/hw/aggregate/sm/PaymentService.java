@@ -37,6 +37,7 @@ public class PaymentService {
     }
 
     public String generatePaymentLink(Long orderId,String transactionId) {
+        log.info("starting generatePaymentLink");
         HashMap<String, String> stringStringHashMap = new HashMap<>();
         stringStringHashMap.put("orderId", orderId.toString());
         String body = null;
@@ -60,12 +61,12 @@ public class PaymentService {
         } else {
             log.error("unable to extract payment link from response");
         }
+        log.info("complete generatePaymentLink");
         return result;
-
     }
 
     public Boolean confirmPaymentStatus(Long orderId) {
-        log.debug("start of confirm payment status");
+        log.info("starting confirmPaymentStatus");
         ParameterizedTypeReference<HashMap<String, Boolean>> responseType =
                 new ParameterizedTypeReference<>() {
                 };
@@ -79,6 +80,7 @@ public class PaymentService {
         } else {
             log.error("unable to extract paymentStatus from response");
         }
+        log.info("complete confirmPaymentStatus");
         return result;
 
     }

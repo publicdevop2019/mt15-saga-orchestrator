@@ -36,116 +36,95 @@ public class OrderService {
     private ResourceServiceTokenHelper tokenHelper;
 
     public void validateOrder(List<BizOrderItem> productList) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            AppValidateBizOrderCommand appValidateBizOrderCommand = new AppValidateBizOrderCommand();
-            appValidateBizOrderCommand.setProductList(productList);
-            HttpEntity<AppValidateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appValidateBizOrderCommand, headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderValidateUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
-        } catch (Exception e) {
-            log.error("validateOrder", e);
-            throw e;
-        }
+        log.info("starting validateOrder");
+        HttpHeaders headers = new HttpHeaders();
+        AppValidateBizOrderCommand appValidateBizOrderCommand = new AppValidateBizOrderCommand();
+        appValidateBizOrderCommand.setProductList(productList);
+        HttpEntity<AppValidateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appValidateBizOrderCommand, headers);
+        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderValidateUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
+        log.info("complete validateOrder");
     }
 
     public void saveConcludeOrder(CreateBizStateMachineCommand machineCommand, BizOrderStatus status) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.add(HTTP_HEADER_CHANGE_ID, machineCommand.getTxId());
-            AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
-            appCreateBizOrderCommand.setOrderId(machineCommand.getOrderId());
-            appCreateBizOrderCommand.setOrderState(status);
-            appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
-            HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
-        } catch (Exception e) {
-            log.error("updateOrder", e);
-            throw e;
-        }
+        log.info("starting saveConcludeOrder");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add(HTTP_HEADER_CHANGE_ID, machineCommand.getTxId());
+        AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
+        appCreateBizOrderCommand.setOrderId(machineCommand.getOrderId());
+        appCreateBizOrderCommand.setOrderState(status);
+        appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
+        HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
+        log.info("complete saveConcludeOrder");
     }
 
     public void saveReservedOrder(CreateBizStateMachineCommand machineCommand, BizOrderStatus status) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.add(HTTP_HEADER_CHANGE_ID, machineCommand.getTxId());
-            AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
-            appCreateBizOrderCommand.setOrderId(machineCommand.getOrderId());
-            appCreateBizOrderCommand.setOrderState(status);
-            HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
-        } catch (Exception e) {
-            log.error("updateOrder", e);
-            throw e;
-        }
+        log.info("starting saveReservedOrder");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add(HTTP_HEADER_CHANGE_ID, machineCommand.getTxId());
+        AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
+        appCreateBizOrderCommand.setOrderId(machineCommand.getOrderId());
+        appCreateBizOrderCommand.setOrderState(status);
+        HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
+        log.info("complete saveReservedOrder");
     }
 
     public void saveNewOrder(String paymentLink, BizOrderStatus status, CreateBizStateMachineCommand command) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
-            AppCreateBizOrderCommand appCreateBizOrderCommand = new AppCreateBizOrderCommand();
-            appCreateBizOrderCommand.setAddress(command.getAddress());
-            appCreateBizOrderCommand.setCreatedBy(command.getCreatedBy());
-            appCreateBizOrderCommand.setOrderId(command.getOrderId());
-            appCreateBizOrderCommand.setOrderState(status);
-            appCreateBizOrderCommand.setPaymentAmt(command.getPaymentAmt());
-            appCreateBizOrderCommand.setPaymentType(command.getPaymentType());
-            appCreateBizOrderCommand.setPaymentLink(paymentLink);
-            appCreateBizOrderCommand.setProductList(command.getProductList());
-            appCreateBizOrderCommand.setUserId(command.getUserId());
-            HttpEntity<AppCreateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
-        } catch (Exception e) {
-            log.error("updateOrder", e);
-            throw e;
-        }
+        log.info("starting saveNewOrder");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
+        AppCreateBizOrderCommand appCreateBizOrderCommand = new AppCreateBizOrderCommand();
+        appCreateBizOrderCommand.setAddress(command.getAddress());
+        appCreateBizOrderCommand.setCreatedBy(command.getCreatedBy());
+        appCreateBizOrderCommand.setOrderId(command.getOrderId());
+        appCreateBizOrderCommand.setOrderState(status);
+        appCreateBizOrderCommand.setPaymentAmt(command.getPaymentAmt());
+        appCreateBizOrderCommand.setPaymentType(command.getPaymentType());
+        appCreateBizOrderCommand.setPaymentLink(paymentLink);
+        appCreateBizOrderCommand.setProductList(command.getProductList());
+        appCreateBizOrderCommand.setUserId(command.getUserId());
+        HttpEntity<AppCreateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
+        log.info("complete saveNewOrder");
     }
 
     public void savePaidOrder(CreateBizStateMachineCommand command, BizOrderStatus status) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
-            AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
-            appCreateBizOrderCommand.setOrderId(command.getOrderId());
-            appCreateBizOrderCommand.setOrderState(status);
-            appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
-            HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + command.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
-        } catch (Exception e) {
-            log.error("updateOrder", e);
-            throw e;
-        }
+        log.info("starting savePaidOrder");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
+        AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
+        appCreateBizOrderCommand.setOrderId(command.getOrderId());
+        appCreateBizOrderCommand.setOrderState(status);
+        appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
+        HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + command.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
+        log.info("complete savePaidOrder");
     }
 
     public void rollbackTransaction(String changeId) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + HTTP_HEADER_CHANGE_ID + ":" + changeId, HttpMethod.DELETE, hashMapHttpEntity, String.class);
-        } catch (Exception e) {
-            log.error("rollbackTransaction", e);
-            throw e;
-        }
+        log.info("starting rollbackTransaction");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
+        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + HTTP_HEADER_CHANGE_ID + ":" + changeId, HttpMethod.DELETE, hashMapHttpEntity, String.class);
+        log.info("complete rollbackTransaction");
     }
 
     public void saveRecycleOrder(CreateBizStateMachineCommand command, BizOrderStatus id) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
-            AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
-            appCreateBizOrderCommand.setOrderId(command.getOrderId());
-            appCreateBizOrderCommand.setOrderState(id);
-            HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-            tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + command.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
-        } catch (Exception e) {
-            log.error("updateOrder", e);
-            throw e;
-        }
+        log.info("starting saveRecycleOrder");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
+        AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
+        appCreateBizOrderCommand.setOrderId(command.getOrderId());
+        appCreateBizOrderCommand.setOrderState(id);
+        HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + command.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
+        log.info("complete saveRecycleOrder");
     }
 }

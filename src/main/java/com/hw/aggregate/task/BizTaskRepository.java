@@ -16,7 +16,7 @@ public interface BizTaskRepository extends JpaRepository<BizTask, Long> {
     @Query("SELECT p FROM #{#entityName} as p WHERE p.createdAt < ?1 AND p.taskStatus = 'STARTED'")
     List<BizTask> findExpiredStartedTasks(Date from);
 
-    @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
+//    @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
     @Query("SELECT p FROM #{#entityName} as p WHERE p.id = ?1")
     Optional<BizTask> findByIdOptLock(Long id);
 

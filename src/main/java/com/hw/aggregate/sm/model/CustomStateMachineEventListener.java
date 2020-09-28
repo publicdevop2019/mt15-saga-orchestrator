@@ -4,6 +4,7 @@ import com.hw.aggregate.sm.CartService;
 import com.hw.aggregate.sm.OrderService;
 import com.hw.aggregate.sm.PaymentService;
 import com.hw.aggregate.sm.ProductService;
+import com.hw.aggregate.sm.exception.MultipleStateMachineException;
 import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.sm.model.order.BizOrderStatus;
 import com.hw.aggregate.task.AppBizTaskApplicationService;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import static com.hw.aggregate.sm.model.CustomStateMachineBuilder.TX_TASK;
 
@@ -55,16 +57,32 @@ public class CustomStateMachineEventListener
         log.error("start of stateMachineError, rollback transaction");
         //set error class so it can be thrown later, thrown ex here will still result 200 response
         stateMachine.getExtendedState().getVariables().put(ERROR_CLASS, exception);
-//        CreatedEntityRep createdTask = stateMachine.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
-//        if (createdTask != null) {
-//            AppBizTaskRep appBizTaskRep = taskService.readById(createdTask.getId());
-//            String[] split = exception.getClass().getName().split("\\.");
-//            rollback(createdTask, appBizTaskRep, split[split.length - 1]);
-//        } else {
-//            log.info("error happened in non-transactional context, no rollback will be triggered");
-//        }
+        CreatedEntityRep createdTask = stateMachine.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
+        if (createdTask != null) {
+            AppBizTaskRep appBizTaskRep = taskService.readById(createdTask.getId());
+            String s = getExceptionName(exception);
+            if (exception instanceof MultipleStateMachineException) {
+                s =((MultipleStateMachineException) exception).getExs().stream().map(this::getExceptionName).collect(Collectors.joining(","));
+            }
+            rollback(createdTask, appBizTaskRep, s);
+        } else {
+            log.info("error happened in non-transactional context, no rollback will be triggered");
+        }
     }
 
+    private String getExceptionName(Exception exception) {
+        String[] split = exception.getClass().getName().split("\\.");
+        String s = split[split.length - 1];
+        return s;
+    }
+
+    /**
+     * rollback should be executed by service, e.g cart and order is under same service, so one rollback needed not two
+     *
+     * @param entityRep
+     * @param taskRep
+     * @param exceptionName
+     */
     private void rollback(CreatedEntityRep entityRep, AppBizTaskRep taskRep, String exceptionName) {
         CompletableFuture<Void> voidCompletableFuture = CompletableFuture.runAsync(() ->
                 paymentService.rollbackTransaction(taskRep.getTransactionId()), customExecutor
@@ -78,15 +96,12 @@ public class CustomStateMachineEventListener
         CompletableFuture<Void> voidCompletableFuture3 = CompletableFuture.runAsync(() ->
                 orderService.rollbackTransaction(taskRep.getTransactionId()), customExecutor
         );
-        CompletableFuture<Void> voidCompletableFuture4 = CompletableFuture.runAsync(() ->
-                cartService.rollbackTransaction(taskRep.getTransactionId()), customExecutor
-        );
+
         CompletableFuture<Void> allOf = CompletableFuture.allOf(
                 voidCompletableFuture,
                 voidCompletableFuture1,
                 voidCompletableFuture2,
-                voidCompletableFuture3,
-                voidCompletableFuture4
+                voidCompletableFuture3
         );
         try {
             allOf.get();
@@ -96,16 +111,35 @@ public class CustomStateMachineEventListener
             return;
         } catch (ExecutionException e) {
             log.error("error during rollback transaction async call", e);
-            return;
+            // update task
+            CompletableFuture<Void> updateTaskFuture = CompletableFuture.runAsync(() ->
+                    {
+                        AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
+                        appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.ROLLBACK_FAILED);
+                        appUpdateBizTaskCommand.setRollbackReason(exceptionName);
+                        taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
+                    }, customExecutor
+            );
+            try {
+                updateTaskFuture.get();
+            } catch (InterruptedException | ExecutionException ex) {
+                log.error("error during task status update, task remain in previous status", ex);
+            }
         }
         log.info("rollback transaction async call complete");
+        // update task
+        CompletableFuture<Void> updateTaskFuture = CompletableFuture.runAsync(() ->
+                {
+                    AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
+                    appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.ROLLBACK);
+                    appUpdateBizTaskCommand.setRollbackReason(exceptionName);
+                    taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
+                }, customExecutor
+        );
         try {
-            AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
-            appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.ROLLBACK);
-            appUpdateBizTaskCommand.setRollbackReason(exceptionName);
-            taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
-        } catch (Exception ex) {
-            log.info("error during task status update, task remain in started status", ex);
+            updateTaskFuture.get();
+        } catch (InterruptedException | ExecutionException e) {
+            log.error("error during task status update, task remain in previous status", e);
         }
     }
 }
