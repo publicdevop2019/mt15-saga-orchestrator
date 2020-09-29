@@ -13,15 +13,21 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 
+import static com.hw.shared.AppConstant.HTTP_HEADER_CHANGE_ID;
+import static com.hw.shared.AppConstant.HTTP_PARAM_QUERY;
+
 @Service
 @Slf4j
 public class PaymentService {
 
-    @Value("${url.confirmUrl}")
+    @Value("${url.payment.confirm}")
     private String confirmUrl;
 
-    @Value("${url.paymentUrl}")
+    @Value("${url.payment.link}")
     private String paymentUrl;
+
+    @Value("${url.payment.change.app}")
+    private String changeUrl;
 
     @Autowired
     private EurekaRegistryHelper eurekaRegistryHelper;
@@ -32,12 +38,20 @@ public class PaymentService {
     @Autowired
     private ObjectMapper mapper;
 
-    public void rollbackTransaction(String transactionId) {
-
+    public void rollbackTransaction(String changeId) {
+        log.info("starting rollbackTransaction");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
+        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + HTTP_HEADER_CHANGE_ID + ":" + changeId, HttpMethod.DELETE, hashMapHttpEntity, String.class);
+        log.info("complete rollbackTransaction");
     }
 
-    public String generatePaymentLink(Long orderId,String transactionId) {
+    public String generatePaymentLink(Long orderId,String changeId) {
         log.info("starting generatePaymentLink");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add(HTTP_HEADER_CHANGE_ID, changeId);
         HashMap<String, String> stringStringHashMap = new HashMap<>();
         stringStringHashMap.put("orderId", orderId.toString());
         String body = null;
@@ -51,8 +65,6 @@ public class PaymentService {
         ParameterizedTypeReference<HashMap<String, String>> responseType =
                 new ParameterizedTypeReference<>() {
                 };
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(body, headers);
         ResponseEntity<HashMap<String, String>> exchange = tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + paymentUrl, HttpMethod.POST, hashMapHttpEntity, responseType);
         String result = null;
