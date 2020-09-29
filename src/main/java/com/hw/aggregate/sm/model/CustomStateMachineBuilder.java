@@ -244,13 +244,12 @@ public class CustomStateMachineBuilder {
         return context -> {
             log.info("start of save task to database");
             try {
-                String txId = TransactionIdGenerator.getTxId();
                 CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
                 AppCreateBizTaskCommand appCreateBizTaskCommand = new AppCreateBizTaskCommand();
                 appCreateBizTaskCommand.setReferenceId(customerOrder.getOrderId());
                 appCreateBizTaskCommand.setTaskName(event);
-                appCreateBizTaskCommand.setTransactionId(txId);
-                CreatedEntityRep createdEntityRep = appBizTaskApplicationService.create(appCreateBizTaskCommand, customerOrder.getTxId());
+                appCreateBizTaskCommand.setTransactionId(customerOrder.getTxId());
+                CreatedEntityRep createdEntityRep = appBizTaskApplicationService.create(appCreateBizTaskCommand, UUID.randomUUID().toString());// for create task, use random uuid
                 context.getExtendedState().getVariables().put(TX_TASK, createdEntityRep);
             } catch (Exception ex) {
                 log.error("error during data persist", ex);

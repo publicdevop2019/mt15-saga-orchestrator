@@ -9,12 +9,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
+import java.io.Serializable;
 
 @Entity
 @Table
 @Data
 @NoArgsConstructor
-public class BizTask extends Auditable implements IdBasedEntity {
+public class BizTask extends Auditable implements IdBasedEntity, Serializable {
     @Id
     private Long id;
 
