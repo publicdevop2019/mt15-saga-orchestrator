@@ -2,7 +2,7 @@
 <Configuration status="warn">
     <Properties>
         <Property name="location">./logs</Property>
-        <Property name="name">SageOrchestrator</Property>
+        <Property name="name">SagaOrchestrator</Property>
     </Properties>
 
     <Appenders>
