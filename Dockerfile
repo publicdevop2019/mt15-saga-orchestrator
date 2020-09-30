@@ -30,7 +30,7 @@ ENV PATH="$PATH:$JAVA_HOME/bin"
 
 COPY --from=jlink-package /opt/jdk-11-mini-runtime /opt/jdk-11-mini-runtime
 
-COPY --from=maven ./target/SageOrchestrator.jar ./
+COPY --from=maven ./target/SagaOrchestrator.jar ./
 
 EXPOSE 8089
 
