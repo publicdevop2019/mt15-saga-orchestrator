@@ -54,6 +54,7 @@ public class OrderService {
         appCreateBizOrderCommand.setOrderId(machineCommand.getOrderId());
         appCreateBizOrderCommand.setOrderState(status);
         appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
+        appCreateBizOrderCommand.setVersion(machineCommand.getVersion());
         HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
         tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
         log.info("complete saveConcludeOrder");
@@ -67,6 +68,7 @@ public class OrderService {
         AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
         appCreateBizOrderCommand.setOrderId(machineCommand.getOrderId());
         appCreateBizOrderCommand.setOrderState(status);
+        appCreateBizOrderCommand.setVersion(machineCommand.getVersion());
         HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
         tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
         log.info("complete saveReservedOrder");
@@ -101,6 +103,7 @@ public class OrderService {
         appCreateBizOrderCommand.setOrderId(command.getOrderId());
         appCreateBizOrderCommand.setOrderState(status);
         appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
+        appCreateBizOrderCommand.setVersion(command.getVersion());
         HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
         tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + command.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
         log.info("complete savePaidOrder");
@@ -115,14 +118,15 @@ public class OrderService {
         log.info("complete rollbackTransaction");
     }
 
-    public void saveRecycleOrder(CreateBizStateMachineCommand command, BizOrderStatus id) {
+    public void saveRecycleOrder(CreateBizStateMachineCommand command, BizOrderStatus orderStatus) {
         log.info("starting saveRecycleOrder");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
         AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
         appCreateBizOrderCommand.setOrderId(command.getOrderId());
-        appCreateBizOrderCommand.setOrderState(id);
+        appCreateBizOrderCommand.setOrderState(orderStatus);
+        appCreateBizOrderCommand.setVersion(command.getVersion());
         HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
         tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + orderUrl + "/" + command.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
         log.info("complete saveRecycleOrder");

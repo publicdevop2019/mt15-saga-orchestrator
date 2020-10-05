@@ -597,7 +597,7 @@ public class CustomStateMachineBuilder {
                     Thread.currentThread().interrupt();
                 } else {
                     log.error("error during updateOrderFuture async call", e);
-                    exs.add(new TaskPersistenceException());
+                    exs.add(new BizOrderUpdateException());
                 }
             }
 
@@ -610,7 +610,7 @@ public class CustomStateMachineBuilder {
                     Thread.currentThread().interrupt();
                 } else {
                     log.error("error during updateTaskFuture async call", e);
-                    exs.add(new BizOrderUpdateException());
+                    exs.add(new TaskPersistenceException());
                 }
             }
 

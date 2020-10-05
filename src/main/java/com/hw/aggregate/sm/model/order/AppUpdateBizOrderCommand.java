@@ -7,4 +7,5 @@ public class AppUpdateBizOrderCommand {
     private long orderId;
     private Boolean paymentStatus;
     private BizOrderStatus orderState;
+    private Integer version;
 }
