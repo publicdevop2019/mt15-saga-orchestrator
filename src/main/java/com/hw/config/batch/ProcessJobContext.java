@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Data
-public class ReleaseJobContext {
+public class ProcessJobContext {
     private ConcurrentHashMap<String, List<CreateBizStateMachineCommand>> jobList = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, AtomicInteger> jobIndex = new ConcurrentHashMap<>();
 }

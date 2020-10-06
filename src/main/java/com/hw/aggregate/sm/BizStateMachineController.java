@@ -18,11 +18,11 @@ public class BizStateMachineController {
 
     @PostMapping("app")
     public ResponseEntity<Void> createForApp(@RequestBody List<CreateBizStateMachineCommand> commands) {
-        if (commands.size() > 1) {
+//        if (commands.size() > 1) {
             appBizStateMachineApplicationService.startBatch(commands);
-        } else {
-            appBizStateMachineApplicationService.start(commands.get(0));
-        }
+//        } else {
+//            appBizStateMachineApplicationService.start(commands.get(0));
+//        }
         return ResponseEntity.ok().build();
     }
 }

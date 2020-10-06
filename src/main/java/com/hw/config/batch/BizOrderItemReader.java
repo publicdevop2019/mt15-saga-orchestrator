@@ -15,10 +15,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 @JobScope
-public class ExpireOrderItemReader implements ItemReader<CreateBizStateMachineCommand> {
+public class BizOrderItemReader implements ItemReader<CreateBizStateMachineCommand> {
 
     @Autowired
-    ReleaseJobContext releaseJobContext;
+    ProcessJobContext jobContext;
 
     String listKey;
 
@@ -29,8 +29,8 @@ public class ExpireOrderItemReader implements ItemReader<CreateBizStateMachineCo
 
     @Override
     public CreateBizStateMachineCommand read() throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException {
-        List<CreateBizStateMachineCommand> createBizStateMachineCommands = releaseJobContext.getJobList().get(listKey);
-        AtomicInteger atomicInteger = releaseJobContext.getJobIndex().get(listKey);
+        List<CreateBizStateMachineCommand> createBizStateMachineCommands = jobContext.getJobList().get(listKey);
+        AtomicInteger atomicInteger = jobContext.getJobIndex().get(listKey);
         int i = atomicInteger.incrementAndGet();
         if (i >= createBizStateMachineCommands.size()) {
             return null;

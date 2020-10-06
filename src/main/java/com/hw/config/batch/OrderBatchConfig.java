@@ -22,7 +22,7 @@ import java.util.concurrent.Future;
 
 @Configuration
 @EnableBatchProcessing
-public class BatchConfig {
+public class OrderBatchConfig {
     @Autowired
     public JobBuilderFactory jobBuilderFactory;
 
@@ -33,10 +33,10 @@ public class BatchConfig {
     private JobRepository jobRepository;
 
     @Autowired
-    private ExpireOrderItemReader expireOrderItemReader;
+    private BizOrderItemReader itemReader;
 
     @Autowired
-    private ExpireOrderItemWriter expireOrderItemWriter;
+    private BizOrderItemWriter itemWriter;
 
     @Autowired
     @Qualifier("CustomPool")
@@ -47,11 +47,11 @@ public class BatchConfig {
     @Autowired
     EntityManagerFactory entityManagerFactory;
     @Autowired
-    ExpireOrderProcessor expireOrderProcessor;
+    BizOrderProcessor processor;
 
     @Bean
     public Job releaseExpireOrder(JobCompletionNotificationListener listener, Step step1) {
-        return jobBuilderFactory.get("releaseExpireOrder")
+        return jobBuilderFactory.get("processBizOrderJob")
                 .listener(listener)
                 .flow(step1)
                 .end()
@@ -61,24 +61,23 @@ public class BatchConfig {
     @Bean
     public AsyncItemWriter<CreateBizStateMachineCommand> asyncWriter() {
         AsyncItemWriter<CreateBizStateMachineCommand> asyncItemWriter = new AsyncItemWriter<>();
-        asyncItemWriter.setDelegate(expireOrderItemWriter);
+        asyncItemWriter.setDelegate(itemWriter);
         return asyncItemWriter;
     }
 
     @Bean
     public AsyncItemProcessor<CreateBizStateMachineCommand, CreateBizStateMachineCommand> asyncProcessor() {
         AsyncItemProcessor<CreateBizStateMachineCommand, CreateBizStateMachineCommand> asyncItemProcessor = new AsyncItemProcessor<>();
-        asyncItemProcessor.setDelegate(expireOrderProcessor);
+        asyncItemProcessor.setDelegate(processor);
         asyncItemProcessor.setTaskExecutor(customExecutor);
-
         return asyncItemProcessor;
     }
 
     @Bean
     public Step release() {
-        return stepBuilderFactory.get("release")
+        return stepBuilderFactory.get("processBizOrderStep")
                 .<CreateBizStateMachineCommand, Future<CreateBizStateMachineCommand>>chunk(10)
-                .reader(expireOrderItemReader)
+                .reader(itemReader)
                 .processor(asyncProcessor())
                 .writer(asyncWriter())
                 .build();
@@ -96,7 +95,6 @@ public class BatchConfig {
             protected JobLauncher createJobLauncher() throws Exception {
                 SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
                 jobLauncher.setJobRepository(jobRepository);
-                jobLauncher.setTaskExecutor(customExecutor);
                 jobLauncher.afterPropertiesSet();
                 return jobLauncher;
             }
@@ -104,7 +102,7 @@ public class BatchConfig {
     }
 
     @Bean
-    ReleaseJobContext getCommands() {
-        return new ReleaseJobContext();
+    ProcessJobContext getProcessContext() {
+        return new ProcessJobContext();
     }
 }

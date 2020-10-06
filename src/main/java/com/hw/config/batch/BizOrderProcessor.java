@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Data
 @Component
-public class ExpireOrderProcessor implements ItemProcessor<CreateBizStateMachineCommand, CreateBizStateMachineCommand> {
+public class BizOrderProcessor implements ItemProcessor<CreateBizStateMachineCommand, CreateBizStateMachineCommand> {
     @Autowired
     AppBizStateMachineApplicationService appBizStateMachineApplicationService;
 

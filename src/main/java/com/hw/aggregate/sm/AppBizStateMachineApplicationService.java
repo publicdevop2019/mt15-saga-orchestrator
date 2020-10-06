@@ -5,6 +5,7 @@ import com.hw.aggregate.sm.exception.BizJobLauncherException;
 import com.hw.aggregate.sm.model.CustomStateMachineBuilder;
 import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.sm.model.order.BizOrderStatus;
+import com.hw.config.batch.ProcessJobContext;
 import com.hw.config.batch.ReleaseJobContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -38,6 +39,8 @@ public class AppBizStateMachineApplicationService {
     Job job;
     @Autowired
     ReleaseJobContext releaseJobContext;
+    @Autowired
+    ProcessJobContext processJobContext;
 
     public void start(CreateBizStateMachineCommand command) {
         StateMachine<BizOrderStatus, BizOrderEvent> stateMachine = customStateMachineBuilder.buildMachine(command.getOrderState());
@@ -58,7 +61,9 @@ public class AppBizStateMachineApplicationService {
         try {
             String s = UUID.randomUUID().toString();
             releaseJobContext.getJobList().put(s, command);
+            processJobContext.getJobList().put(s, command);
             releaseJobContext.getJobIndex().put(s, new AtomicInteger(-1));
+            processJobContext.getJobIndex().put(s, new AtomicInteger(-1));
             JobParameters paramJobParameters = new JobParametersBuilder().addString("list", s).toJobParameters();
             jobLauncher.run(job, paramJobParameters);
         } catch (JobExecutionAlreadyRunningException | JobRestartException | JobInstanceAlreadyCompleteException | JobParametersInvalidException e) {
