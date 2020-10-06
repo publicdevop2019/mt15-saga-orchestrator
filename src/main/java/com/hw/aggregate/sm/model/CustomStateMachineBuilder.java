@@ -13,11 +13,13 @@ import com.hw.aggregate.task.model.BizTaskStatus;
 import com.hw.aggregate.task.representation.AppBizTaskRep;
 import com.hw.shared.IdGenerator;
 import com.hw.shared.rest.CreatedEntityRep;
+import com.hw.shared.rest.exception.EntityNotExistException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.lang.Nullable;
 import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.action.Action;
@@ -176,7 +178,8 @@ public class CustomStateMachineBuilder {
             log.info("start of recycle order");
             CreateBizStateMachineCommand machineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
             CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
-            AppBizTaskRep appBizTaskRep = appBizTaskApplicationService.readById(transactionalTask.getId());
+            AppBizTaskRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
+            if (appBizTaskRep == null) return false;
 
             // increase order storage
             CompletableFuture<Void> increaseOrderStorageFuture = CompletableFuture.runAsync(() ->
@@ -266,6 +269,7 @@ public class CustomStateMachineBuilder {
                     bizOrder.setPrepareEvent(BizOrderEvent.PREPARE_CONFIRM_ORDER);
                     bizOrder.setTxId(UUID.randomUUID().toString());
                     bizOrder.setOrderState(context.getTarget().getId());
+                    bizOrder.setVersion(bizOrder.getVersion() + 1);// manually increase version +1 so confirm can success
                     stateMachineApplicationService.start(bizOrder);
                 }
                 , customExecutor
@@ -276,7 +280,9 @@ public class CustomStateMachineBuilder {
         return context -> {
             CreateBizStateMachineCommand stateMachineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
             CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
-            AppBizTaskRep appBizTaskRep = appBizTaskApplicationService.readById(transactionalTask.getId());
+            List<RuntimeException> exs = new ArrayList<>();
+            AppBizTaskRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
+            if (appBizTaskRep == null) return false;
             log.info("start of prepareNewOrder of {}", stateMachineCommand.getOrderId());
             // validate product info
             CompletableFuture<Void> validateResultFuture = CompletableFuture.runAsync(() ->
@@ -307,7 +313,6 @@ public class CustomStateMachineBuilder {
                     }, customExecutor
             );
 
-            List<RuntimeException> exs = new ArrayList<>();
             String paymentLink = null;
             try {
                 paymentLink = paymentQRLinkFuture.get();
@@ -400,12 +405,26 @@ public class CustomStateMachineBuilder {
         };
     }
 
+    @Nullable
+    private AppBizTaskRep getAppBizTaskRep(StateContext<BizOrderStatus, BizOrderEvent> context, CreatedEntityRep transactionalTask) {
+        AppBizTaskRep appBizTaskRep;
+        try {
+            log.info("read saved task");
+            appBizTaskRep = appBizTaskApplicationService.readById(transactionalTask.getId());
+        } catch (EntityNotExistException ex) {
+            context.getStateMachine().setStateMachineError(ex);
+            return null;
+        }
+        return appBizTaskRep;
+    }
+
     private Guard<BizOrderStatus, BizOrderEvent> reserveOrderTx() {
         return context -> {
             log.info("start of reserveOrderTx");
             CreateBizStateMachineCommand stateMachineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
             CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
-            AppBizTaskRep appBizTaskRep = appBizTaskApplicationService.readById(transactionalTask.getId());
+            AppBizTaskRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
+            if (appBizTaskRep == null) return false;
 
             // decrease order storage
             CompletableFuture<Void> decreaseOrderStorageFuture = CompletableFuture.runAsync(() ->
@@ -481,7 +500,8 @@ public class CustomStateMachineBuilder {
         return context -> {
             CreateBizStateMachineCommand machineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
             CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
-            AppBizTaskRep appBizTaskRep = appBizTaskApplicationService.readById(transactionalTask.getId());
+            AppBizTaskRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
+            if (appBizTaskRep == null) return false;
             log.info("start of decreaseActualStorage for {}", machineCommand.getOrderId());
 
             // decrease actual storage
@@ -551,7 +571,8 @@ public class CustomStateMachineBuilder {
             log.info("start of updatePaymentStatus");
             CreateBizStateMachineCommand bizOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
             CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
-            AppBizTaskRep appBizTaskRep = appBizTaskApplicationService.readById(transactionalTask.getId());
+            AppBizTaskRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
+            if (appBizTaskRep == null) return false;
 
             // confirm payment
             CompletableFuture<Boolean> confirmPaymentFuture = CompletableFuture.supplyAsync(() ->
