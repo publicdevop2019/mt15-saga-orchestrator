@@ -1,28 +1,18 @@
 package com.hw.aggregate.sm;
 
 import com.hw.aggregate.sm.command.CreateBizStateMachineCommand;
-import com.hw.aggregate.sm.exception.BizJobLauncherException;
 import com.hw.aggregate.sm.model.CustomStateMachineBuilder;
 import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.sm.model.order.BizOrderStatus;
-import com.hw.config.batch.ProcessJobContext;
-import com.hw.config.batch.ReleaseJobContext;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.JobParametersInvalidException;
-import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
-import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
-import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CompletableFuture;
 
 import static com.hw.aggregate.sm.model.CustomStateMachineEventListener.ERROR_CLASS;
 
@@ -32,15 +22,10 @@ public class AppBizStateMachineApplicationService {
     public static final String BIZ_ORDER = "BizOrder";
     @Autowired
     private CustomStateMachineBuilder customStateMachineBuilder;
-    @Autowired
-    JobLauncher jobLauncher;
 
     @Autowired
-    Job job;
-    @Autowired
-    ReleaseJobContext releaseJobContext;
-    @Autowired
-    ProcessJobContext processJobContext;
+    @Qualifier("CustomPool")
+    private TaskExecutor customExecutor;
 
     public void start(CreateBizStateMachineCommand command) {
         StateMachine<BizOrderStatus, BizOrderEvent> stateMachine = customStateMachineBuilder.buildMachine(command.getOrderState());
@@ -58,17 +43,10 @@ public class AppBizStateMachineApplicationService {
     }
 
     public void startBatch(List<CreateBizStateMachineCommand> command) {
-        try {
-            String s = UUID.randomUUID().toString();
-            releaseJobContext.getJobList().put(s, command);
-            processJobContext.getJobList().put(s, command);
-            releaseJobContext.getJobIndex().put(s, new AtomicInteger(-1));
-            processJobContext.getJobIndex().put(s, new AtomicInteger(-1));
-            JobParameters paramJobParameters = new JobParametersBuilder().addString("list", s).toJobParameters();
-            jobLauncher.run(job, paramJobParameters);
-        } catch (JobExecutionAlreadyRunningException | JobRestartException | JobInstanceAlreadyCompleteException | JobParametersInvalidException e) {
-            log.error("error during job launch", e);
-            throw new BizJobLauncherException();
-        }
+        command.forEach(e -> {
+            CompletableFuture<Void> orderFuture = CompletableFuture.runAsync(() ->
+                    start(e), customExecutor
+            );
+        });
     }
 }

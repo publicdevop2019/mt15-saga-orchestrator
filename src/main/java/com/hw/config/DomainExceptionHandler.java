@@ -43,7 +43,6 @@ public class DomainExceptionHandler extends ResponseEntityExceptionHandler {
             StateMachineExecutionException.class,
             TaskPersistenceException.class,
             MultipleStateMachineException.class,
-            BizJobLauncherException.class,
     })
     protected ResponseEntity<Object> handle500Exception(RuntimeException ex, WebRequest request) {
         ErrorMessage errorMessage = new ErrorMessage(ex);
