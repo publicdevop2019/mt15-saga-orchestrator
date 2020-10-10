@@ -7,12 +7,14 @@ import com.hw.aggregate.sm.model.order.BizOrderStatus;
 import com.hw.shared.sql.PatchCommand;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
 @Data
-public class CreateBizStateMachineCommand {
+public class CreateBizStateMachineCommand implements Serializable {
+    private static final long serialVersionUID = 1;
     private long orderId;
     private String txId;
     private long userId;
