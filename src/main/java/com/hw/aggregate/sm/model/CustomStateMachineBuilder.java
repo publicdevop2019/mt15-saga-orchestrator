@@ -503,7 +503,6 @@ public class CustomStateMachineBuilder {
             AppBizTaskRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
             if (appBizTaskRep == null) return false;
             log.info("start of decreaseActualStorage for {}", machineCommand.getOrderId());
-
             // decrease actual storage
             CompletableFuture<Void> decreaseActualStorageFuture = CompletableFuture.runAsync(() ->
                     productService.updateProductStorage(machineCommand.getActualStorageChange(), appBizTaskRep.getTransactionId()), customExecutor
