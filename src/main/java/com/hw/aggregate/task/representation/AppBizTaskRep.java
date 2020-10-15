@@ -7,9 +7,11 @@ import lombok.Data;
 public class AppBizTaskRep {
 
     private String transactionId;
+    private Long id;
 
     public AppBizTaskRep(BizTask bizTask) {
         this.transactionId = bizTask.getTransactionId();
+        this.id=bizTask.getId();
     }
 
 }

@@ -54,7 +54,7 @@ public class BizTaskScheduler {
     @Scheduled(fixedRateString = "${fixedRate.in.milliseconds.taskRollback}")
     public void rollbackTask() {
         Date from = Date.from(Instant.ofEpochMilli(Instant.now().toEpochMilli() - taskExpireAfter * 60 * 1000));
-        List<BizTask> tasks = taskRepository.findExpiredStartedTasks(from);
+        List<BizTask> tasks = taskRepository.findExpiredStartedTasksOrFailedTask(from);
         if (!tasks.isEmpty()) {
             log.info("expired & started task found {}", tasks.stream().map(BizTask::getId).collect(Collectors.toList()));
             tasks.forEach(task -> {

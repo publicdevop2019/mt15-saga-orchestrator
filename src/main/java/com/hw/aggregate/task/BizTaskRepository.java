@@ -13,8 +13,8 @@ import java.util.Optional;
 
 @Repository
 public interface BizTaskRepository extends JpaRepository<BizTask, Long> {
-    @Query("SELECT p FROM #{#entityName} as p WHERE p.createdAt < ?1 AND p.taskStatus = 'STARTED'")
-    List<BizTask> findExpiredStartedTasks(Date from);
+    @Query("SELECT p FROM #{#entityName} as p WHERE p.createdAt < ?1 AND (p.taskStatus = 'STARTED' OR p.taskStatus = 'FAIL' )")
+    List<BizTask> findExpiredStartedTasksOrFailedTask(Date from);
 
 //    @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
     @Query("SELECT p FROM #{#entityName} as p WHERE p.id = ?1")

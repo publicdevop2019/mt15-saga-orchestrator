@@ -191,15 +191,6 @@ public class CustomStateMachineBuilder {
                     orderService.saveRecycleOrder(machineCommand, context.getTarget().getId()), customExecutor
             );
 
-            // update task
-            CompletableFuture<Void> updateTaskFuture = CompletableFuture.runAsync(() ->
-                    {
-                        AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
-                        appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.COMPLETED);
-                        appBizTaskApplicationService.replaceById(transactionalTask.getId(), appUpdateBizTaskCommand, appBizTaskRep.getTransactionId());
-                    }, customExecutor
-            );
-
             List<RuntimeException> exs = new ArrayList<>();
             try {
                 increaseOrderStorageFuture.get();
@@ -227,19 +218,7 @@ public class CustomStateMachineBuilder {
                 }
             }
 
-            try {
-                updateTaskFuture.get();
-            } catch (InterruptedException | ExecutionException e) {
-                if (e instanceof InterruptedException) {
-                    log.warn("thread was interrupted", e);
-                    context.getStateMachine().setStateMachineError(e);
-                    Thread.currentThread().interrupt();
-                } else {
-                    log.error("error during updateTaskFuture async call", e);
-                    exs.add(new TaskPersistenceException());
-                }
-            }
-            return checkExceptions(context, exs);
+            return checkExceptions(context, exs, appBizTaskRep);
         };
     }
 
@@ -304,15 +283,6 @@ public class CustomStateMachineBuilder {
                     cartService.clearCart(stateMachineCommand.getUserId(), appBizTaskRep.getTransactionId()), customExecutor
             );
 
-            // update task
-            CompletableFuture<Void> updateTaskFuture = CompletableFuture.runAsync(() ->
-                    {
-                        AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
-                        appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.COMPLETED);
-                        appBizTaskApplicationService.replaceById(transactionalTask.getId(), appUpdateBizTaskCommand, appBizTaskRep.getTransactionId());
-                    }, customExecutor
-            );
-
             String paymentLink = null;
             try {
                 paymentLink = paymentQRLinkFuture.get();
@@ -362,19 +332,10 @@ public class CustomStateMachineBuilder {
                     exs.add(new CartClearException());
                 }
             }
-            try {
-                updateTaskFuture.get();
-            } catch (InterruptedException | ExecutionException e) {
-                if (e instanceof InterruptedException) {
-                    log.warn("thread was interrupted", e);
-                    context.getStateMachine().setStateMachineError(e);
-                    Thread.currentThread().interrupt();
-                } else {
-                    log.error("error during updateTaskFuture async call", e);
-                    exs.add(new TaskPersistenceException());
-                }
-            }
             if (exs.size() > 0) {
+                AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
+                appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.FAIL);
+                appBizTaskApplicationService.replaceById(appBizTaskRep.getId(), appUpdateBizTaskCommand, appBizTaskRep.getTransactionId());
                 if (exs.size() > 1) {
                     context.getStateMachine().setStateMachineError(new MultipleStateMachineException(exs));
                 } else {
@@ -392,15 +353,24 @@ public class CustomStateMachineBuilder {
                 updateOrderFuture.get();
             } catch (ExecutionException ex) {
                 log.error("error during prepare order async call", ex);
+                AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
+                appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.FAIL);
+                appBizTaskApplicationService.replaceById(appBizTaskRep.getId(), appUpdateBizTaskCommand, appBizTaskRep.getTransactionId());
                 if (updateOrderFuture.isCompletedExceptionally())
                     context.getStateMachine().setStateMachineError(new BizOrderUpdateException());
                 return false;
             } catch (InterruptedException e) {
                 log.warn("thread was interrupted", e);
+                AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
+                appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.FAIL);
+                appBizTaskApplicationService.replaceById(appBizTaskRep.getId(), appUpdateBizTaskCommand, appBizTaskRep.getTransactionId());
                 context.getStateMachine().setStateMachineError(e);
                 Thread.currentThread().interrupt();
                 return false;
             }
+            AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
+            appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.COMPLETED);
+            appBizTaskApplicationService.replaceById(appBizTaskRep.getId(), appUpdateBizTaskCommand, appBizTaskRep.getTransactionId());
             return true;
         };
     }
@@ -436,15 +406,6 @@ public class CustomStateMachineBuilder {
                     orderService.saveReservedOrder(stateMachineCommand, context.getTarget().getId()), customExecutor
             );
 
-            // update task
-            CompletableFuture<Void> updateTaskFuture = CompletableFuture.runAsync(() ->
-                    {
-                        AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
-                        appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.COMPLETED);
-                        appBizTaskApplicationService.replaceById(transactionalTask.getId(), appUpdateBizTaskCommand, appBizTaskRep.getTransactionId());
-                    }, customExecutor
-            );
-
             List<RuntimeException> exs = new ArrayList<>();
             try {
                 decreaseOrderStorageFuture.get();
@@ -472,20 +433,8 @@ public class CustomStateMachineBuilder {
                 }
             }
 
-            try {
-                updateTaskFuture.get();
-            } catch (InterruptedException | ExecutionException e) {
-                if (e instanceof InterruptedException) {
-                    log.warn("thread was interrupted", e);
-                    context.getStateMachine().setStateMachineError(e);
-                    Thread.currentThread().interrupt();
-                } else {
-                    log.error("error during updateTaskFuture async call", e);
-                    exs.add(new TaskPersistenceException());
-                }
-            }
 
-            return checkExceptions(context, exs);
+            return checkExceptions(context, exs, appBizTaskRep);
         };
     }
 
@@ -511,15 +460,6 @@ public class CustomStateMachineBuilder {
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
                     orderService.saveConcludeOrder(machineCommand, context.getTarget().getId()), customExecutor
-            );
-
-            // update task
-            CompletableFuture<Void> updateTaskFuture = CompletableFuture.runAsync(() ->
-                    {
-                        AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
-                        appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.COMPLETED);
-                        appBizTaskApplicationService.replaceById(transactionalTask.getId(), appUpdateBizTaskCommand, appBizTaskRep.getTransactionId());
-                    }, customExecutor
             );
 
             List<RuntimeException> exs = new ArrayList<>();
@@ -549,19 +489,7 @@ public class CustomStateMachineBuilder {
                 }
             }
 
-            try {
-                updateTaskFuture.get();
-            } catch (InterruptedException | ExecutionException e) {
-                if (e instanceof InterruptedException) {
-                    log.warn("thread was interrupted", e);
-                    context.getStateMachine().setStateMachineError(e);
-                    Thread.currentThread().interrupt();
-                } else {
-                    log.error("error during updateTaskFuture async call", e);
-                    exs.add(new TaskPersistenceException());
-                }
-            }
-            return checkExceptions(context, exs);
+            return checkExceptions(context, exs, appBizTaskRep);
         };
     }
 
@@ -576,15 +504,6 @@ public class CustomStateMachineBuilder {
             // confirm payment
             CompletableFuture<Boolean> confirmPaymentFuture = CompletableFuture.supplyAsync(() ->
                     paymentService.confirmPaymentStatus(bizOrder.getOrderId()), customExecutor
-            );
-
-            // update task
-            CompletableFuture<Void> updateTaskFuture = CompletableFuture.runAsync(() ->
-                    {
-                        AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
-                        appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.COMPLETED);
-                        appBizTaskApplicationService.replaceById(transactionalTask.getId(), appUpdateBizTaskCommand, appBizTaskRep.getTransactionId());
-                    }, customExecutor
             );
 
             // update order
@@ -621,24 +540,14 @@ public class CustomStateMachineBuilder {
                 }
             }
 
-            try {
-                updateTaskFuture.get();
-            } catch (InterruptedException | ExecutionException e) {
-                if (e instanceof InterruptedException) {
-                    log.warn("thread was interrupted", e);
-                    context.getStateMachine().setStateMachineError(e);
-                    Thread.currentThread().interrupt();
-                } else {
-                    log.error("error during updateTaskFuture async call", e);
-                    exs.add(new TaskPersistenceException());
-                }
-            }
-
-            return checkExceptions(context, exs);
+            return checkExceptions(context, exs, appBizTaskRep);
         };
     }
 
-    private boolean checkExceptions(StateContext<BizOrderStatus, BizOrderEvent> context, List<RuntimeException> exs) {
+    private boolean checkExceptions(StateContext<BizOrderStatus, BizOrderEvent> context, List<RuntimeException> exs, AppBizTaskRep appBizTxRep) {
+        AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
+        appUpdateBizTaskCommand.setTaskStatus(exs.size() == 0 ? BizTaskStatus.COMPLETED : BizTaskStatus.FAIL);
+        appBizTaskApplicationService.replaceById(appBizTxRep.getId(), appUpdateBizTaskCommand, appBizTxRep.getTransactionId());
         if (exs.size() > 0) {
             if (exs.size() > 1) {
                 context.getStateMachine().setStateMachineError(new MultipleStateMachineException(exs));

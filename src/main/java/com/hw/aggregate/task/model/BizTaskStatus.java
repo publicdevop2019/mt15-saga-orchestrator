@@ -5,8 +5,8 @@ import com.hw.shared.EnumDBConverter;
 public enum BizTaskStatus {
     STARTED,
     ROLLBACK,
-    ROLLBACK_FAILED,
-    COMPLETED;
+    COMPLETED,
+    FAIL;
 
     public static class DBConverter extends EnumDBConverter {
         public DBConverter() {

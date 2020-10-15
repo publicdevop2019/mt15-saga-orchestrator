@@ -62,7 +62,7 @@ public class CustomStateMachineEventListener
             AppBizTaskRep appBizTaskRep = taskService.readById(createdTask.getId());
             String s = getExceptionName(exception);
             if (exception instanceof MultipleStateMachineException) {
-                s =((MultipleStateMachineException) exception).getExs().stream().map(this::getExceptionName).collect(Collectors.joining(","));
+                s = ((MultipleStateMachineException) exception).getExs().stream().map(this::getExceptionName).collect(Collectors.joining(","));
             }
             rollback(createdTask, appBizTaskRep, s);
         } else {
@@ -110,36 +110,13 @@ public class CustomStateMachineEventListener
             Thread.currentThread().interrupt();
             return;
         } catch (ExecutionException e) {
-            log.error("error during rollback transaction async call", e);
-            // update task
-            CompletableFuture<Void> updateTaskFuture = CompletableFuture.runAsync(() ->
-                    {
-                        AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
-                        appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.ROLLBACK_FAILED);
-                        appUpdateBizTaskCommand.setRollbackReason(exceptionName);
-                        taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
-                    }, customExecutor
-            );
-            try {
-                updateTaskFuture.get();
-            } catch (InterruptedException | ExecutionException ex) {
-                log.error("error during task status update, task remain in previous status", ex);
-            }
+            log.error("error during rollback transaction async call,task remain in previous status", e);
         }
         log.info("rollback transaction async call complete");
         // update task
-        CompletableFuture<Void> updateTaskFuture = CompletableFuture.runAsync(() ->
-                {
-                    AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
-                    appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.ROLLBACK);
-                    appUpdateBizTaskCommand.setRollbackReason(exceptionName);
-                    taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
-                }, customExecutor
-        );
-        try {
-            updateTaskFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            log.error("error during task status update, task remain in previous status", e);
-        }
+        AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
+        appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.ROLLBACK);
+        appUpdateBizTaskCommand.setRollbackReason(exceptionName);
+        taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
     }
 }
