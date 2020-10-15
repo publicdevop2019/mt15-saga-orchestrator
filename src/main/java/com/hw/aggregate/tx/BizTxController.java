@@ -1,6 +1,6 @@
-package com.hw.aggregate.task;
+package com.hw.aggregate.tx;
 
-import com.hw.aggregate.task.representation.AdminBizTaskCardRep;
+import com.hw.aggregate.tx.representation.AdminBizTxCardRep;
 import com.hw.shared.sql.SumPagedRep;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -13,15 +13,15 @@ import static com.hw.shared.AppConstant.*;
 
 @RestController
 @RequestMapping(produces = "application/json", path = "tasks")
-public class BizTaskController {
+public class BizTxController {
     @Autowired
-    AdminBizTaskApplicationService adminBizTaskApplicationService;
+    AdminBizTxApplicationService adminBizTaskApplicationService;
 
 
     @GetMapping("admin")
-    public ResponseEntity<SumPagedRep<AdminBizTaskCardRep>> readForAdminByQuery(@RequestParam(value = HTTP_PARAM_QUERY, required = false) String queryParam,
-                                                                                @RequestParam(value = HTTP_PARAM_PAGE, required = false) String pageParam,
-                                                                                @RequestParam(value = HTTP_PARAM_SKIP_COUNT, required = false) String config) {
+    public ResponseEntity<SumPagedRep<AdminBizTxCardRep>> readForAdminByQuery(@RequestParam(value = HTTP_PARAM_QUERY, required = false) String queryParam,
+                                                                              @RequestParam(value = HTTP_PARAM_PAGE, required = false) String pageParam,
+                                                                              @RequestParam(value = HTTP_PARAM_SKIP_COUNT, required = false) String config) {
         return ResponseEntity.ok(adminBizTaskApplicationService.readByQuery(queryParam, pageParam, config));
     }
 

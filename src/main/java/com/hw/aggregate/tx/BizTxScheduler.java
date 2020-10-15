@@ -1,12 +1,12 @@
-package com.hw.aggregate.task;
+package com.hw.aggregate.tx;
 
 import com.hw.aggregate.sm.CartService;
 import com.hw.aggregate.sm.OrderService;
 import com.hw.aggregate.sm.PaymentService;
 import com.hw.aggregate.sm.ProductService;
 import com.hw.aggregate.sm.exception.BizOrderSchedulerTaskRollbackException;
-import com.hw.aggregate.task.model.BizTask;
-import com.hw.aggregate.task.model.BizTaskStatus;
+import com.hw.aggregate.tx.model.BizTx;
+import com.hw.aggregate.tx.model.BizTxStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -29,9 +29,9 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @EnableScheduling
-public class BizTaskScheduler {
+public class BizTxScheduler {
     @Autowired
-    private BizTaskRepository taskRepository;
+    private BizTxRepository taskRepository;
     @Value("${task.expireAfter}")
     private Long taskExpireAfter;
     @Autowired
@@ -54,9 +54,9 @@ public class BizTaskScheduler {
     @Scheduled(fixedRateString = "${fixedRate.in.milliseconds.taskRollback}")
     public void rollbackTask() {
         Date from = Date.from(Instant.ofEpochMilli(Instant.now().toEpochMilli() - taskExpireAfter * 60 * 1000));
-        List<BizTask> tasks = taskRepository.findExpiredStartedTasks(from);
+        List<BizTx> tasks = taskRepository.findExpiredStartedTasks(from);
         if (!tasks.isEmpty()) {
-            log.info("expired & started task found {}", tasks.stream().map(BizTask::getId).collect(Collectors.toList()));
+            log.info("expired & started task found {}", tasks.stream().map(BizTx::getId).collect(Collectors.toList()));
             tasks.forEach(task -> {
                 try {
                     new TransactionTemplate(transactionManager)
@@ -64,10 +64,10 @@ public class BizTaskScheduler {
                                 @Override
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
-                                    Optional<BizTask> byIdOptLock = taskRepository.findByIdOptLock(task.getId());
+                                    Optional<BizTx> byIdOptLock = taskRepository.findByIdOptLock(task.getId());
                                     if (byIdOptLock.isPresent()
                                             && byIdOptLock.get().getCreatedAt().compareTo(from) < 0
-                                            && byIdOptLock.get().getTaskStatus().equals(BizTaskStatus.STARTED)
+                                            && byIdOptLock.get().getTaskStatus().equals(BizTxStatus.STARTED)
                                     ) {
                                         rollback(task);
                                     }
@@ -82,7 +82,7 @@ public class BizTaskScheduler {
         }
     }
 
-    private void rollback(BizTask transactionalTask) {
+    private void rollback(BizTx transactionalTask) {
         CompletableFuture<Void> voidCompletableFuture = CompletableFuture.runAsync(() ->
                 paymentService.rollbackTransaction(transactionalTask.getTransactionId()), customExecutor
         );
@@ -107,7 +107,7 @@ public class BizTaskScheduler {
             throw new BizOrderSchedulerTaskRollbackException();
         }
         log.info("rollback transaction async call complete");
-        transactionalTask.setTaskStatus(BizTaskStatus.ROLLBACK);
+        transactionalTask.setTaskStatus(BizTxStatus.ROLLBACK_ACK);
         transactionalTask.setRollbackReason("Started Expired");
         try {
             taskRepository.saveAndFlush(transactionalTask);

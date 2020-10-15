@@ -1,4 +1,4 @@
-package com.hw.aggregate.task.model;
+package com.hw.aggregate.tx.model;
 
 import com.hw.shared.sql.RestfulQueryRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,11 +7,11 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 
 @Component
-public class BizTaskQueryRegistry extends RestfulQueryRegistry<BizTask> {
+public class BizTxQueryRegistry extends RestfulQueryRegistry<BizTx> {
     @Autowired
-    private AppBizTaskSelectQueryBuilder appBizTaskSelectQueryBuilder;
+    private AppBizTxSelectQueryBuilder appBizTaskSelectQueryBuilder;
     @Autowired
-    private AdminBizTaskSelectQueryBuilder adminBizTaskSelectQueryBuilder;
+    private AdminBizTxSelectQueryBuilder adminBizTaskSelectQueryBuilder;
 
     @Override
     @PostConstruct

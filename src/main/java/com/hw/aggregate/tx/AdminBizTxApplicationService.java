@@ -1,9 +1,9 @@
-package com.hw.aggregate.task;
+package com.hw.aggregate.tx;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hw.aggregate.task.model.BizTask;
-import com.hw.aggregate.task.model.BizTaskQueryRegistry;
-import com.hw.aggregate.task.representation.AdminBizTaskCardRep;
+import com.hw.aggregate.tx.model.BizTx;
+import com.hw.aggregate.tx.model.BizTxQueryRegistry;
+import com.hw.aggregate.tx.representation.AdminBizTxCardRep;
 import com.hw.shared.IdGenerator;
 import com.hw.shared.idempotent.AppChangeRecordApplicationService;
 import com.hw.shared.rest.DefaultRoleBasedRestfulService;
@@ -16,9 +16,9 @@ import javax.annotation.PostConstruct;
 import java.util.Map;
 
 @Service
-public class AdminBizTaskApplicationService extends DefaultRoleBasedRestfulService<BizTask, AdminBizTaskCardRep, Void, VoidTypedClass> {
+public class AdminBizTxApplicationService extends DefaultRoleBasedRestfulService<BizTx, AdminBizTxCardRep, Void, VoidTypedClass> {
     @Autowired
-    private BizTaskQueryRegistry registry;
+    private BizTxQueryRegistry registry;
     @Autowired
     private IdGenerator idGenerator2;
     @Autowired
@@ -26,14 +26,14 @@ public class AdminBizTaskApplicationService extends DefaultRoleBasedRestfulServi
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
-    private BizTaskRepository repo2;
+    private BizTxRepository repo2;
 
 
     @PostConstruct
     private void setUp() {
         repo = repo2;
         queryRegistry = registry;
-        entityClass = BizTask.class;
+        entityClass = BizTx.class;
         role = RestfulQueryRegistry.RoleEnum.ADMIN;
         idGenerator = idGenerator2;
         appChangeRecordApplicationService = changeRepository2;
@@ -41,42 +41,42 @@ public class AdminBizTaskApplicationService extends DefaultRoleBasedRestfulServi
     }
 
     @Override
-    public BizTask replaceEntity(BizTask bizTask, Object command) {
+    public BizTx replaceEntity(BizTx bizTask, Object command) {
         return null;
     }
 
     @Override
-    public AdminBizTaskCardRep getEntitySumRepresentation(BizTask bizTask) {
-        return new AdminBizTaskCardRep(bizTask);
+    public AdminBizTxCardRep getEntitySumRepresentation(BizTx bizTask) {
+        return new AdminBizTxCardRep(bizTask);
     }
 
     @Override
-    public Void getEntityRepresentation(BizTask bizTask) {
+    public Void getEntityRepresentation(BizTx bizTask) {
         return null;
     }
 
     @Override
-    protected BizTask createEntity(long id, Object command) {
+    protected BizTx createEntity(long id, Object command) {
         return null;
     }
 
     @Override
-    public void preDelete(BizTask bizTask) {
+    public void preDelete(BizTx bizTask) {
 
     }
 
     @Override
-    public void postDelete(BizTask bizTask) {
+    public void postDelete(BizTx bizTask) {
 
     }
 
     @Override
-    protected void prePatch(BizTask bizTask, Map<String, Object> params, VoidTypedClass middleLayer) {
+    protected void prePatch(BizTx bizTask, Map<String, Object> params, VoidTypedClass middleLayer) {
 
     }
 
     @Override
-    protected void postPatch(BizTask bizTask, Map<String, Object> params, VoidTypedClass middleLayer) {
+    protected void postPatch(BizTx bizTask, Map<String, Object> params, VoidTypedClass middleLayer) {
 
     }
 }

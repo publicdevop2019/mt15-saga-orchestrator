@@ -1,15 +1,15 @@
-package com.hw.aggregate.task.representation;
+package com.hw.aggregate.tx.representation;
 
 import com.hw.aggregate.sm.model.order.BizOrderEvent;
-import com.hw.aggregate.task.model.BizTask;
-import com.hw.aggregate.task.model.BizTaskStatus;
+import com.hw.aggregate.tx.model.BizTx;
+import com.hw.aggregate.tx.model.BizTxStatus;
 import lombok.Data;
 
 @Data
-public class AdminBizTaskCardRep {
+public class AdminBizTxCardRep {
     private Long id;
     private BizOrderEvent taskName;
-    private BizTaskStatus taskStatus;
+    private BizTxStatus taskStatus;
     private String transactionId;
     private Long referenceId;
     private String rollbackReason;
@@ -19,7 +19,7 @@ public class AdminBizTaskCardRep {
     private String modifiedBy;
     private long modifiedAt;
 
-    public AdminBizTaskCardRep(BizTask bizTask) {
+    public AdminBizTxCardRep(BizTx bizTask) {
 
         this.id = bizTask.getId();
         this.taskName = bizTask.getTaskName();

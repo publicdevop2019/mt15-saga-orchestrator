@@ -1,4 +1,4 @@
-package com.hw.aggregate.task.model;
+package com.hw.aggregate.tx.model;
 
 import com.hw.shared.sql.builder.SelectQueryBuilder;
 import com.hw.shared.sql.clause.SelectFieldLongEqualClause;
@@ -8,11 +8,11 @@ import org.springframework.stereotype.Component;
 
 import javax.persistence.EntityManager;
 
-import static com.hw.aggregate.task.model.BizTask.*;
+import static com.hw.aggregate.tx.model.BizTx.*;
 
 @Component
-public class AdminBizTaskSelectQueryBuilder extends SelectQueryBuilder<BizTask> {
-    AdminBizTaskSelectQueryBuilder() {
+public class AdminBizTxSelectQueryBuilder extends SelectQueryBuilder<BizTx> {
+    AdminBizTxSelectQueryBuilder() {
         supportedWhereField.put(ENTITY_TASK_NAME, new SelectFieldStringEqualClause<>(ENTITY_TASK_NAME));
         supportedWhereField.put(ENTITY_TASK_STATUS, new SelectFieldStringEqualClause<>(ENTITY_TASK_STATUS));
         supportedWhereField.put(ENTITY_REFERENCE_ID, new SelectFieldLongEqualClause<>(ENTITY_REFERENCE_ID));

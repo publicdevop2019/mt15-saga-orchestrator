@@ -1,22 +1,18 @@
-package com.hw.aggregate.task;
+package com.hw.aggregate.tx;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hw.aggregate.task.command.AppCreateBizTaskCommand;
-import com.hw.aggregate.task.command.AppUpdateBizTaskCommand;
-import com.hw.aggregate.task.model.BizTask;
-import com.hw.aggregate.task.model.BizTaskQueryRegistry;
-import com.hw.aggregate.task.representation.AppBizTaskRep;
+import com.hw.aggregate.tx.command.AppCreateBizTxCommand;
+import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
+import com.hw.aggregate.tx.model.BizTx;
+import com.hw.aggregate.tx.model.BizTxQueryRegistry;
+import com.hw.aggregate.tx.representation.AppBizTxRep;
 import com.hw.shared.IdGenerator;
 import com.hw.shared.idempotent.AppChangeRecordApplicationService;
-import com.hw.shared.idempotent.OperationType;
 import com.hw.shared.rest.CreatedEntityRep;
 import com.hw.shared.rest.DefaultRoleBasedRestfulService;
 import com.hw.shared.rest.VoidTypedClass;
 import com.hw.shared.sql.RestfulQueryRegistry;
-import com.hw.shared.sql.SumPagedRep;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -27,9 +23,9 @@ import javax.persistence.EntityManager;
 import java.util.Map;
 @Slf4j
 @Service
-public class AppBizTaskApplicationService extends DefaultRoleBasedRestfulService<BizTask, Void, AppBizTaskRep, VoidTypedClass> {
+public class AppBizTxApplicationService extends DefaultRoleBasedRestfulService<BizTx, Void, AppBizTxRep, VoidTypedClass> {
     @Autowired
-    private BizTaskQueryRegistry registry;
+    private BizTxQueryRegistry registry;
     @Autowired
     private IdGenerator idGenerator2;
     @Autowired
@@ -37,7 +33,7 @@ public class AppBizTaskApplicationService extends DefaultRoleBasedRestfulService
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
-    private BizTaskRepository repo2;
+    private BizTxRepository repo2;
     @Autowired
     private EntityManager entityManager;
 
@@ -45,7 +41,7 @@ public class AppBizTaskApplicationService extends DefaultRoleBasedRestfulService
     private void setUp() {
         repo = repo2;
         queryRegistry = registry;
-        entityClass = BizTask.class;
+        entityClass = BizTx.class;
         role = RestfulQueryRegistry.RoleEnum.APP;
         idGenerator = idGenerator2;
         appChangeRecordApplicationService = changeRepository2;
@@ -65,42 +61,42 @@ public class AppBizTaskApplicationService extends DefaultRoleBasedRestfulService
     }
 
     @Override
-    public BizTask replaceEntity(BizTask bizTask, Object command) {
-        return bizTask.replace((AppUpdateBizTaskCommand) command);
+    public BizTx replaceEntity(BizTx bizTask, Object command) {
+        return bizTask.replace((AppUpdateBizTxCommand) command);
     }
 
     @Override
-    public Void getEntitySumRepresentation(BizTask bizTask) {
+    public Void getEntitySumRepresentation(BizTx bizTask) {
         return null;
     }
 
     @Override
-    public AppBizTaskRep getEntityRepresentation(BizTask bizTask) {
-        return new AppBizTaskRep(bizTask);
+    public AppBizTxRep getEntityRepresentation(BizTx bizTask) {
+        return new AppBizTxRep(bizTask);
     }
 
     @Override
-    protected BizTask createEntity(long id, Object command) {
-        return BizTask.create(id, (AppCreateBizTaskCommand) command);
+    protected BizTx createEntity(long id, Object command) {
+        return BizTx.create(id, (AppCreateBizTxCommand) command);
     }
 
     @Override
-    public void preDelete(BizTask bizTask) {
-
-    }
-
-    @Override
-    public void postDelete(BizTask bizTask) {
+    public void preDelete(BizTx bizTask) {
 
     }
 
     @Override
-    protected void prePatch(BizTask bizTask, Map<String, Object> params, VoidTypedClass middleLayer) {
+    public void postDelete(BizTx bizTask) {
 
     }
 
     @Override
-    protected void postPatch(BizTask bizTask, Map<String, Object> params, VoidTypedClass middleLayer) {
+    protected void prePatch(BizTx bizTask, Map<String, Object> params, VoidTypedClass middleLayer) {
+
+    }
+
+    @Override
+    protected void postPatch(BizTx bizTask, Map<String, Object> params, VoidTypedClass middleLayer) {
 
     }
 

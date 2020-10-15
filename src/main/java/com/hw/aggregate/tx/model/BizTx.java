@@ -1,10 +1,11 @@
-package com.hw.aggregate.task.model;
+package com.hw.aggregate.tx.model;
 
 import com.hw.aggregate.sm.model.order.BizOrderEvent;
-import com.hw.aggregate.task.command.AppCreateBizTaskCommand;
-import com.hw.aggregate.task.command.AppUpdateBizTaskCommand;
+import com.hw.aggregate.tx.command.AppCreateBizTxCommand;
+import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
 import com.hw.shared.Auditable;
 import com.hw.shared.rest.IdBasedEntity;
+import com.hw.shared.rest.VersionBasedEntity;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -15,7 +16,7 @@ import java.io.Serializable;
 @Table
 @Data
 @NoArgsConstructor
-public class BizTask extends Auditable implements IdBasedEntity, Serializable {
+public class BizTx extends Auditable implements IdBasedEntity, Serializable , VersionBasedEntity {
     @Id
     private Long id;
 
@@ -25,8 +26,8 @@ public class BizTask extends Auditable implements IdBasedEntity, Serializable {
     public static final String ENTITY_TASK_NAME = "taskName";
 
     @Column(length = 25)
-    @Convert(converter = BizTaskStatus.DBConverter.class)
-    private BizTaskStatus taskStatus;
+    @Convert(converter = BizTxStatus.DBConverter.class)
+    private BizTxStatus taskStatus;
     public static final String ENTITY_TASK_STATUS = "taskStatus";
 
     private String transactionId;
@@ -37,19 +38,19 @@ public class BizTask extends Auditable implements IdBasedEntity, Serializable {
     @Version
     private Integer version;
 
-    public static BizTask create(Long id, AppCreateBizTaskCommand command) {
-        return new BizTask(id, command);
+    public static BizTx create(Long id, AppCreateBizTxCommand command) {
+        return new BizTx(id, command);
     }
 
-    public BizTask(Long id, AppCreateBizTaskCommand command) {
+    public BizTx(Long id, AppCreateBizTxCommand command) {
         this.id = id;
         this.taskName = command.getTaskName();
-        this.taskStatus = BizTaskStatus.STARTED;
+        this.taskStatus = BizTxStatus.STARTED;
         this.transactionId = command.getTransactionId();
         this.referenceId = command.getReferenceId();
     }
 
-    public BizTask replace(AppUpdateBizTaskCommand command) {
+    public BizTx replace(AppUpdateBizTxCommand command) {
         this.setTaskStatus(command.getTaskStatus());
         this.setRollbackReason(command.getRollbackReason());
         return this;

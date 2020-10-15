@@ -1,7 +1,7 @@
 package com.hw.config;
 
 import com.hw.aggregate.sm.exception.*;
-import com.hw.aggregate.task.exception.TaskPersistenceException;
+import com.hw.aggregate.tx.exception.BizTxPersistenceException;
 import com.hw.shared.ErrorMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
@@ -41,7 +41,7 @@ public class DomainExceptionHandler extends ResponseEntityExceptionHandler {
             BizOrderUpdateException.class,
             StateMachineCreationException.class,
             StateMachineExecutionException.class,
-            TaskPersistenceException.class,
+            BizTxPersistenceException.class,
             MultipleStateMachineException.class,
     })
     protected ResponseEntity<Object> handle500Exception(RuntimeException ex, WebRequest request) {

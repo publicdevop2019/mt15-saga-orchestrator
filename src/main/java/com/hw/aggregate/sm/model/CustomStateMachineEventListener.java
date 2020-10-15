@@ -7,11 +7,15 @@ import com.hw.aggregate.sm.ProductService;
 import com.hw.aggregate.sm.exception.MultipleStateMachineException;
 import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.sm.model.order.BizOrderStatus;
-import com.hw.aggregate.task.AppBizTaskApplicationService;
-import com.hw.aggregate.task.command.AppUpdateBizTaskCommand;
-import com.hw.aggregate.task.model.BizTaskStatus;
-import com.hw.aggregate.task.representation.AppBizTaskRep;
+import com.hw.aggregate.tx.AppBizTxApplicationService;
+import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
+import com.hw.aggregate.tx.model.BizTxStatus;
+import com.hw.aggregate.tx.representation.AppBizTxRep;
 import com.hw.shared.rest.CreatedEntityRep;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.MessageProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -20,18 +24,20 @@ import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.listener.StateMachineListenerAdapter;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static com.hw.aggregate.sm.model.CustomStateMachineBuilder.TX_TASK;
+import static com.hw.shared.AppConstant.HTTP_HEADER_CHANGE_ID;
 
 @Slf4j
 @Component
 public class CustomStateMachineEventListener
         extends StateMachineListenerAdapter<BizOrderStatus, BizOrderEvent> {
     public static final String ERROR_CLASS = "ERROR_CLASS";
+    //    private final static String QUEUE_NAME = "rollback";
     @Autowired
     @Qualifier("CustomPool")
     private TaskExecutor customExecutor;
@@ -44,7 +50,7 @@ public class CustomStateMachineEventListener
 
 
     @Autowired
-    private AppBizTaskApplicationService taskService;
+    private AppBizTxApplicationService taskService;
 
     @Autowired
     private OrderService orderService;
@@ -59,12 +65,12 @@ public class CustomStateMachineEventListener
         stateMachine.getExtendedState().getVariables().put(ERROR_CLASS, exception);
         CreatedEntityRep createdTask = stateMachine.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
         if (createdTask != null) {
-            AppBizTaskRep appBizTaskRep = taskService.readById(createdTask.getId());
+            AppBizTxRep appBizTaskRep = taskService.readById(createdTask.getId());
             String s = getExceptionName(exception);
             if (exception instanceof MultipleStateMachineException) {
-                s =((MultipleStateMachineException) exception).getExs().stream().map(this::getExceptionName).collect(Collectors.joining(","));
+                s = ((MultipleStateMachineException) exception).getExs().stream().map(this::getExceptionName).collect(Collectors.joining(","));
             }
-            rollback(createdTask, appBizTaskRep, s);
+            sendRollbackMessage(createdTask, appBizTaskRep, s);
         } else {
             log.info("error happened in non-transactional context, no rollback will be triggered");
         }
@@ -83,63 +89,23 @@ public class CustomStateMachineEventListener
      * @param taskRep
      * @param exceptionName
      */
-    private void rollback(CreatedEntityRep entityRep, AppBizTaskRep taskRep, String exceptionName) {
-        CompletableFuture<Void> voidCompletableFuture = CompletableFuture.runAsync(() ->
-                paymentService.rollbackTransaction(taskRep.getTransactionId()), customExecutor
-        );
-        CompletableFuture<Void> voidCompletableFuture1 = CompletableFuture.runAsync(() ->
-                productService.rollbackTransaction(taskRep.getTransactionId()), customExecutor
-        );
-        CompletableFuture<Void> voidCompletableFuture2 = CompletableFuture.runAsync(() ->
-                taskService.rollbackTransaction(taskRep.getTransactionId()), customExecutor
-        );
-        CompletableFuture<Void> voidCompletableFuture3 = CompletableFuture.runAsync(() ->
-                orderService.rollbackTransaction(taskRep.getTransactionId()), customExecutor
-        );
-
-        CompletableFuture<Void> allOf = CompletableFuture.allOf(
-                voidCompletableFuture,
-                voidCompletableFuture1,
-                voidCompletableFuture2,
-                voidCompletableFuture3
-        );
-        try {
-            allOf.get();
-        } catch (InterruptedException e) {
-            log.warn("thread was interrupted", e);
-            Thread.currentThread().interrupt();
-            return;
-        } catch (ExecutionException e) {
-            log.error("error during rollback transaction async call", e);
-            // update task
-            CompletableFuture<Void> updateTaskFuture = CompletableFuture.runAsync(() ->
-                    {
-                        AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
-                        appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.ROLLBACK_FAILED);
-                        appUpdateBizTaskCommand.setRollbackReason(exceptionName);
-                        taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
-                    }, customExecutor
-            );
-            try {
-                updateTaskFuture.get();
-            } catch (InterruptedException | ExecutionException ex) {
-                log.error("error during task status update, task remain in previous status", ex);
-            }
-        }
-        log.info("rollback transaction async call complete");
-        // update task
-        CompletableFuture<Void> updateTaskFuture = CompletableFuture.runAsync(() ->
-                {
-                    AppUpdateBizTaskCommand appUpdateBizTaskCommand = new AppUpdateBizTaskCommand();
-                    appUpdateBizTaskCommand.setTaskStatus(BizTaskStatus.ROLLBACK);
-                    appUpdateBizTaskCommand.setRollbackReason(exceptionName);
-                    taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
-                }, customExecutor
-        );
-        try {
-            updateTaskFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            log.error("error during task status update, task remain in previous status", e);
+    private void sendRollbackMessage(CreatedEntityRep entityRep, AppBizTxRep taskRep, String exceptionName) {
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost("localhost");
+        try (
+                Connection connection = factory.newConnection();
+                Channel channel = connection.createChannel();
+        ) {
+            channel.exchangeDeclare("rollback", "fanout");
+            String message = HTTP_HEADER_CHANGE_ID + ":" + taskRep.getTransactionId();
+            channel.basicPublish("rollback", "", MessageProperties.PERSISTENT_TEXT_PLAIN, message.getBytes());
+            log.info("rollback message sent, updating tx status");
+            AppUpdateBizTxCommand appUpdateBizTaskCommand = new AppUpdateBizTxCommand();
+            appUpdateBizTaskCommand.setTaskStatus(BizTxStatus.ROLLBACK_ACK);
+            appUpdateBizTaskCommand.setRollbackReason(exceptionName);
+            taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
+        } catch (TimeoutException | IOException e) {
+            log.error("error during rollback message deliver, tx remain fail status", e);
         }
     }
 }
