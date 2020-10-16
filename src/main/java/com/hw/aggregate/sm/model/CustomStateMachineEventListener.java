@@ -96,9 +96,9 @@ public class CustomStateMachineEventListener
                 Connection connection = factory.newConnection();
                 Channel channel = connection.createChannel();
         ) {
-            channel.exchangeDeclare("rollback", "fanout");
+            channel.exchangeDeclare("rollback", "direct");
             String message = HTTP_HEADER_CHANGE_ID + ":" + taskRep.getTransactionId();
-            channel.basicPublish("rollback", "", MessageProperties.PERSISTENT_TEXT_PLAIN, message.getBytes());
+            channel.basicPublish("rollback", "scope:mall", MessageProperties.PERSISTENT_TEXT_PLAIN, message.getBytes());
             log.info("rollback message sent, updating tx status");
             AppUpdateBizTxCommand appUpdateBizTaskCommand = new AppUpdateBizTxCommand();
             appUpdateBizTaskCommand.setTaskStatus(BizTxStatus.ROLLBACK_ACK);

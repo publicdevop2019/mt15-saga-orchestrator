@@ -22,9 +22,9 @@ public class AdminBizTxCardRep {
     public AdminBizTxCardRep(BizTx bizTask) {
 
         this.id = bizTask.getId();
-        this.taskName = bizTask.getTaskName();
-        this.taskStatus = bizTask.getTaskStatus();
-        this.transactionId = bizTask.getTransactionId();
+        this.taskName = bizTask.getTxName();
+        this.taskStatus = bizTask.getTxStatus();
+        this.transactionId = bizTask.getTxId();
         this.rollbackReason = bizTask.getRollbackReason();
         this.referenceId = bizTask.getReferenceId();
         this.version = bizTask.getVersion();

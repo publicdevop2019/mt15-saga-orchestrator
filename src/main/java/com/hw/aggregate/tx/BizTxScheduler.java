@@ -54,7 +54,7 @@ public class BizTxScheduler {
     @Scheduled(fixedRateString = "${fixedRate.in.milliseconds.taskRollback}")
     public void rollbackTask() {
         Date from = Date.from(Instant.ofEpochMilli(Instant.now().toEpochMilli() - taskExpireAfter * 60 * 1000));
-        List<BizTx> tasks = taskRepository.findExpiredStartedTasks(from);
+        List<BizTx> tasks = taskRepository.findExpiredStartedOrFailTxs(from);
         if (!tasks.isEmpty()) {
             log.info("expired & started task found {}", tasks.stream().map(BizTx::getId).collect(Collectors.toList()));
             tasks.forEach(task -> {
@@ -67,7 +67,7 @@ public class BizTxScheduler {
                                     Optional<BizTx> byIdOptLock = taskRepository.findByIdOptLock(task.getId());
                                     if (byIdOptLock.isPresent()
                                             && byIdOptLock.get().getCreatedAt().compareTo(from) < 0
-                                            && byIdOptLock.get().getTaskStatus().equals(BizTxStatus.STARTED)
+                                            && byIdOptLock.get().getTxStatus().equals(BizTxStatus.STARTED)
                                     ) {
                                         rollback(task);
                                     }
@@ -84,16 +84,16 @@ public class BizTxScheduler {
 
     private void rollback(BizTx transactionalTask) {
         CompletableFuture<Void> voidCompletableFuture = CompletableFuture.runAsync(() ->
-                paymentService.rollbackTransaction(transactionalTask.getTransactionId()), customExecutor
+                paymentService.rollbackTransaction(transactionalTask.getTxId()), customExecutor
         );
         CompletableFuture<Void> voidCompletableFuture1 = CompletableFuture.runAsync(() ->
-                productService.rollbackTransaction(transactionalTask.getTransactionId()), customExecutor
+                productService.rollbackTransaction(transactionalTask.getTxId()), customExecutor
         );
         CompletableFuture<Void> voidCompletableFuture2 = CompletableFuture.runAsync(() ->
-                cartService.rollbackTransaction(transactionalTask.getTransactionId()), customExecutor
+                cartService.rollbackTransaction(transactionalTask.getTxId()), customExecutor
         );
         CompletableFuture<Void> voidCompletableFuture3 = CompletableFuture.runAsync(() ->
-                orderService.rollbackTransaction(transactionalTask.getTransactionId()), customExecutor
+                orderService.rollbackTransaction(transactionalTask.getTxId()), customExecutor
         );
         CompletableFuture<Void> allOf = CompletableFuture.allOf(voidCompletableFuture, voidCompletableFuture1, voidCompletableFuture2, voidCompletableFuture3);
         try {
@@ -107,7 +107,7 @@ public class BizTxScheduler {
             throw new BizOrderSchedulerTaskRollbackException();
         }
         log.info("rollback transaction async call complete");
-        transactionalTask.setTaskStatus(BizTxStatus.ROLLBACK_ACK);
+        transactionalTask.setTxStatus(BizTxStatus.ROLLBACK_ACK);
         transactionalTask.setRollbackReason("Started Expired");
         try {
             taskRepository.saveAndFlush(transactionalTask);

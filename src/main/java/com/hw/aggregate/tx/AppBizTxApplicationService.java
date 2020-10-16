@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.PostConstruct;
 import javax.persistence.EntityManager;
 import java.util.Map;
+
 @Slf4j
 @Service
 public class AppBizTxApplicationService extends DefaultRoleBasedRestfulService<BizTx, Void, AppBizTxRep, VoidTypedClass> {
@@ -46,18 +47,21 @@ public class AppBizTxApplicationService extends DefaultRoleBasedRestfulService<B
         idGenerator = idGenerator2;
         appChangeRecordApplicationService = changeRepository2;
         om = objectMapper;
+        rollbackSupported = false;
+        
     }
+
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CreatedEntityRep create(Object command, String changeId) {
         log.debug("creating task");
-        return super.create(command,changeId);
+        return super.create(command, changeId);
     }
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void replaceById(Long id, Object command, String changeId) {
-        super.replaceById(id,command,changeId);
+        super.replaceById(id, command, changeId);
     }
 
     @Override

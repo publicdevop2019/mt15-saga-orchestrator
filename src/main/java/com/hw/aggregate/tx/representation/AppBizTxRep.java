@@ -10,7 +10,7 @@ public class AppBizTxRep {
     private Long id;
 
     public AppBizTxRep(BizTx bizTask) {
-        this.transactionId = bizTask.getTransactionId();
+        this.transactionId = bizTask.getTxId();
         this.id=bizTask.getId();
     }
 

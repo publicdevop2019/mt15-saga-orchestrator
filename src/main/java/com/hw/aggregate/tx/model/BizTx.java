@@ -22,15 +22,15 @@ public class BizTx extends Auditable implements IdBasedEntity, Serializable , Ve
 
     @Column(length = 50)
     @Convert(converter = BizOrderEvent.DBConverter.class)
-    private BizOrderEvent taskName;
-    public static final String ENTITY_TASK_NAME = "taskName";
+    private BizOrderEvent txName;
+    public static final String ENTITY_TX_NAME = "txName";
 
     @Column(length = 25)
     @Convert(converter = BizTxStatus.DBConverter.class)
-    private BizTxStatus taskStatus;
-    public static final String ENTITY_TASK_STATUS = "taskStatus";
+    private BizTxStatus txStatus;
+    public static final String ENTITY_TX_STATUS = "txStatus";
 
-    private String transactionId;
+    private String txId;
     private String rollbackReason;
     private Long referenceId;
     public static final String ENTITY_REFERENCE_ID = "referenceId";
@@ -44,14 +44,14 @@ public class BizTx extends Auditable implements IdBasedEntity, Serializable , Ve
 
     public BizTx(Long id, AppCreateBizTxCommand command) {
         this.id = id;
-        this.taskName = command.getTaskName();
-        this.taskStatus = BizTxStatus.STARTED;
-        this.transactionId = command.getTransactionId();
+        this.txName = command.getTaskName();
+        this.txStatus = BizTxStatus.STARTED;
+        this.txId = command.getTransactionId();
         this.referenceId = command.getReferenceId();
     }
 
     public BizTx replace(AppUpdateBizTxCommand command) {
-        this.setTaskStatus(command.getTaskStatus());
+        this.setTxStatus(command.getTaskStatus());
         this.setRollbackReason(command.getRollbackReason());
         return this;
     }
