@@ -103,17 +103,15 @@ public class BizTxScheduler {
             Thread.currentThread().interrupt();
             return;
         } catch (ExecutionException e) {
-            log.error("error during rollback transaction async call", e);
-            throw new BizOrderSchedulerTaskRollbackException();
+            throw new BizOrderSchedulerTaskRollbackException(e);
         }
         log.info("rollback transaction async call complete");
         transactionalTask.setTxStatus(BizTxStatus.ROLLBACK_ACK);
         transactionalTask.setRollbackReason("Started Expired");
         try {
             taskRepository.saveAndFlush(transactionalTask);
-        } catch (Exception ex) {
-            log.info("error during task status update, task remain in started status", ex);
-            throw new BizOrderSchedulerTaskRollbackException();
+        } catch (Exception e) {
+            throw new BizOrderSchedulerTaskRollbackException(e);
         }
     }
 

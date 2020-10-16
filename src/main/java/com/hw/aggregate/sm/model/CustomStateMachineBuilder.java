@@ -167,8 +167,7 @@ public class CustomStateMachineBuilder {
                     .guard(recycleOrder())
             ;
         } catch (Exception e) {
-            log.error("error during creating state machine");
-            throw new StateMachineCreationException();
+            throw new StateMachineCreationException(e);
         }
         return builder.build();
     }
@@ -200,8 +199,7 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during increaseOrderStorageFuture async call", e);
-                    exs.add(new BizOrderStorageDecreaseException());
+                    exs.add(new BizOrderStorageDecreaseException(e));
                 }
             }
 
@@ -213,8 +211,7 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during updateOrderFuture async call", e);
-                    exs.add(new BizOrderUpdateException());
+                    exs.add(new BizOrderUpdateException(e));
                 }
             }
 
@@ -225,18 +222,19 @@ public class CustomStateMachineBuilder {
     private Action<BizOrderStatus, BizOrderEvent> prepareTaskFor(BizOrderEvent event) {
         return context -> {
             log.info("start of save task to database");
+            CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
+            AppCreateBizTxCommand appCreateBizTaskCommand = new AppCreateBizTxCommand();
+            appCreateBizTaskCommand.setReferenceId(customerOrder.getOrderId());
+            appCreateBizTaskCommand.setTaskName(event);
+            appCreateBizTaskCommand.setTransactionId(customerOrder.getTxId());
+            CreatedEntityRep createdEntityRep = null;
             try {
-                CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-                AppCreateBizTxCommand appCreateBizTaskCommand = new AppCreateBizTxCommand();
-                appCreateBizTaskCommand.setReferenceId(customerOrder.getOrderId());
-                appCreateBizTaskCommand.setTaskName(event);
-                appCreateBizTaskCommand.setTransactionId(customerOrder.getTxId());
-                CreatedEntityRep createdEntityRep = appBizTaskApplicationService.create(appCreateBizTaskCommand, UUID.randomUUID().toString());// for create task, use random uuid
-                context.getExtendedState().getVariables().put(TX_TASK, createdEntityRep);
-            } catch (Exception ex) {
-                log.error("error during data persist", ex);
-                context.getStateMachine().setStateMachineError(new BizTxPersistenceException());
+                createdEntityRep = appBizTaskApplicationService.create(appCreateBizTaskCommand, UUID.randomUUID().toString());// for create task, use random uuid
+            } catch (Exception e) {
+                context.getStateMachine().setStateMachineError(new BizTxPersistenceException(e));
             }
+            context.getExtendedState().getVariables().put(TX_TASK, createdEntityRep);
+            log.info("start of save task to database");
         };
     }
 
@@ -292,8 +290,7 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during paymentQRLinkFuture async call", e);
-                    exs.add(new PaymentQRLinkGenerationException());
+                    exs.add(new PaymentQRLinkGenerationException(e));
                 }
             }
             try {
@@ -304,8 +301,7 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during validateResultFuture async call", e);
-                    exs.add(new BizOrderValidationException());
+                    exs.add(new BizOrderValidationException(e));
                 }
             }
             try {
@@ -316,8 +312,7 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during decreaseOrderStorageFuture async call", e);
-                    exs.add(new BizOrderStorageDecreaseException());
+                    exs.add(new BizOrderStorageDecreaseException(e));
                 }
             }
             try {
@@ -328,8 +323,7 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during clearCartFuture async call", e);
-                    exs.add(new CartClearException());
+                    exs.add(new CartClearException(e));
                 }
             }
 
@@ -357,9 +351,8 @@ public class CustomStateMachineBuilder {
                 AppUpdateBizTxCommand appUpdateBizTaskCommand = new AppUpdateBizTxCommand();
                 appUpdateBizTaskCommand.setTaskStatus(BizTxStatus.FAIL);
                 appBizTaskApplicationService.replaceById(appBizTxRep.getId(), appUpdateBizTaskCommand, appBizTxRep.getTransactionId());
-                log.error("error during prepare order async call", ex);
                 if (updateOrderFuture.isCompletedExceptionally())
-                    context.getStateMachine().setStateMachineError(new BizOrderUpdateException());
+                    context.getStateMachine().setStateMachineError(new BizOrderUpdateException(ex));
                 return false;
             } catch (InterruptedException e) {
                 AppUpdateBizTxCommand appUpdateBizTaskCommand = new AppUpdateBizTxCommand();
@@ -417,8 +410,7 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during decreaseOrderStorageFuture async call", e);
-                    exs.add(new BizOrderStorageDecreaseException());
+                    exs.add(new BizOrderStorageDecreaseException(e));
                 }
             }
 
@@ -430,12 +422,11 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during updateOrderFuture async call", e);
-                    exs.add(new BizOrderUpdateException());
+                    exs.add(new BizOrderUpdateException(e));
                 }
             }
 
-            return checkResult(context, exs,appBizTaskRep);
+            return checkResult(context, exs, appBizTaskRep);
         };
     }
 
@@ -472,8 +463,7 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during decreaseActualStorageFuture async call", e);
-                    exs.add(new ActualStorageDecreaseException());
+                    exs.add(new ActualStorageDecreaseException(e));
                 }
             }
 
@@ -485,12 +475,11 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during updateOrderFuture async call", e);
-                    exs.add(new BizOrderUpdateException());
+                    exs.add(new BizOrderUpdateException(e));
                 }
             }
 
-            return checkResult(context, exs,appBizTaskRep);
+            return checkResult(context, exs, appBizTaskRep);
         };
     }
 
@@ -523,8 +512,7 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during confirmPaymentFuture async call", e);
-                    exs.add(new PaymentConfirmationFailedException());
+                    exs.add(new PaymentConfirmationFailedException(e));
                 }
             }
 
@@ -536,8 +524,7 @@ public class CustomStateMachineBuilder {
                     context.getStateMachine().setStateMachineError(e);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("error during updateOrderFuture async call", e);
-                    exs.add(new BizOrderUpdateException());
+                    exs.add(new BizOrderUpdateException(e));
                 }
             }
 

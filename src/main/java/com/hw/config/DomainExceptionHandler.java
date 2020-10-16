@@ -36,11 +36,9 @@ public class DomainExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(value = {
             PaymentQRLinkGenerationException.class,
-            BizOrderResubmitException.class,
             ActualStorageDecreaseException.class,
             BizOrderUpdateException.class,
             StateMachineCreationException.class,
-            StateMachineExecutionException.class,
             BizTxPersistenceException.class,
             MultipleStateMachineException.class,
     })
