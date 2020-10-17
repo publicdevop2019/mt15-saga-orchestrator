@@ -13,8 +13,4 @@ public class AppBizTxSelectQueryBuilder extends SelectQueryBuilder<BizTx> {
         MAX_PAGE_SIZE = 1;
     }
 
-    @Autowired
-    private void setEntityManager(EntityManager entityManager) {
-        em = entityManager;
-    }
 }

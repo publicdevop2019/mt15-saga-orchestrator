@@ -19,8 +19,4 @@ public class AdminBizTxSelectQueryBuilder extends SelectQueryBuilder<BizTx> {
         allowEmptyClause=true;
     }
 
-    @Autowired
-    private void setEntityManager(EntityManager entityManager) {
-        em = entityManager;
-    }
 }
