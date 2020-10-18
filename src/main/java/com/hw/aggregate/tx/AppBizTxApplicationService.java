@@ -1,13 +1,9 @@
 package com.hw.aggregate.tx;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hw.aggregate.tx.command.AppCreateBizTxCommand;
 import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
 import com.hw.aggregate.tx.model.BizTx;
-import com.hw.aggregate.tx.model.BizTxQueryRegistry;
 import com.hw.aggregate.tx.representation.AppBizTxRep;
-import com.hw.shared.IdGenerator;
-import com.hw.shared.idempotent.AppChangeRecordApplicationService;
 import com.hw.shared.rest.CreatedEntityRep;
 import com.hw.shared.rest.DefaultRoleBasedRestfulService;
 import com.hw.shared.rest.VoidTypedClass;
@@ -26,27 +22,12 @@ import java.util.Map;
 @Service
 public class AppBizTxApplicationService extends DefaultRoleBasedRestfulService<BizTx, Void, AppBizTxRep, VoidTypedClass> {
     @Autowired
-    private BizTxQueryRegistry registry;
-    @Autowired
-    private IdGenerator idGenerator2;
-    @Autowired
-    private AppChangeRecordApplicationService changeRepository2;
-    @Autowired
-    private ObjectMapper objectMapper;
-    @Autowired
-    private BizTxRepository repo2;
-    @Autowired
     private EntityManager entityManager;
 
     @PostConstruct
     private void setUp() {
-        repo = repo2;
-        queryRegistry = registry;
         entityClass = BizTx.class;
         role = RestfulQueryRegistry.RoleEnum.APP;
-        idGenerator = idGenerator2;
-        appChangeRecordApplicationService = changeRepository2;
-        om = objectMapper;
         rollbackSupported = false;
         
     }
