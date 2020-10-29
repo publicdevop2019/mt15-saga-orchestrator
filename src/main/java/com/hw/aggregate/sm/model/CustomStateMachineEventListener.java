@@ -83,7 +83,6 @@ public class CustomStateMachineEventListener
     }
 
     /**
-     * rollback should be executed by service, e.g cart and order is under same service, so one rollback needed not two
      *
      * @param entityRep
      * @param taskRep

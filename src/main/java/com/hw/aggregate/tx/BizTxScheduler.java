@@ -1,12 +1,13 @@
 package com.hw.aggregate.tx;
 
-import com.hw.aggregate.sm.CartService;
-import com.hw.aggregate.sm.OrderService;
-import com.hw.aggregate.sm.PaymentService;
-import com.hw.aggregate.sm.ProductService;
 import com.hw.aggregate.sm.exception.BizOrderSchedulerTaskRollbackException;
+import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
 import com.hw.aggregate.tx.model.BizTx;
 import com.hw.aggregate.tx.model.BizTxStatus;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.MessageProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,13 +20,16 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+
+import static com.hw.shared.AppConstant.HTTP_HEADER_CHANGE_ID;
 
 @Slf4j
 @EnableScheduling
@@ -35,21 +39,12 @@ public class BizTxScheduler {
     @Value("${task.expireAfter}")
     private Long taskExpireAfter;
     @Autowired
-    private PaymentService paymentService;
-
-    @Autowired
-    private ProductService productService;
-
-    @Autowired
-    private OrderService orderService;
-
-    @Autowired
-    private CartService cartService;
-    @Autowired
     private PlatformTransactionManager transactionManager;
     @Autowired
     @Qualifier("CustomPool")
     private TaskExecutor customExecutor;
+    @Autowired
+    private AppBizTxApplicationService taskService;
 
     @Scheduled(fixedRateString = "${fixedRate.in.milliseconds.taskRollback}")
     public void rollbackTask() {
@@ -82,35 +77,23 @@ public class BizTxScheduler {
         }
     }
 
-    private void rollback(BizTx transactionalTask) {
-        CompletableFuture<Void> voidCompletableFuture = CompletableFuture.runAsync(() ->
-                paymentService.rollbackTransaction(transactionalTask.getTxId()), customExecutor
-        );
-        CompletableFuture<Void> voidCompletableFuture1 = CompletableFuture.runAsync(() ->
-                productService.rollbackTransaction(transactionalTask.getTxId()), customExecutor
-        );
-        CompletableFuture<Void> voidCompletableFuture2 = CompletableFuture.runAsync(() ->
-                cartService.rollbackTransaction(transactionalTask.getTxId()), customExecutor
-        );
-        CompletableFuture<Void> voidCompletableFuture3 = CompletableFuture.runAsync(() ->
-                orderService.rollbackTransaction(transactionalTask.getTxId()), customExecutor
-        );
-        CompletableFuture<Void> allOf = CompletableFuture.allOf(voidCompletableFuture, voidCompletableFuture1, voidCompletableFuture2, voidCompletableFuture3);
-        try {
-            allOf.get();
-        } catch (InterruptedException e) {
-            log.warn("thread was interrupted", e);
-            Thread.currentThread().interrupt();
-            return;
-        } catch (ExecutionException e) {
-            throw new BizOrderSchedulerTaskRollbackException(e);
-        }
-        log.info("rollback transaction async call complete");
-        transactionalTask.setTxStatus(BizTxStatus.ROLLBACK_ACK);
-        transactionalTask.setRollbackReason("Started Expired");
-        try {
-            taskRepository.saveAndFlush(transactionalTask);
-        } catch (Exception e) {
+    private void rollback(BizTx entityRep) {
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost("localhost");
+        try (
+                Connection connection = factory.newConnection();
+                Channel channel = connection.createChannel();
+        ) {
+            channel.exchangeDeclare("rollback", "direct");
+            String message = HTTP_HEADER_CHANGE_ID + ":" + entityRep.getTxId();
+            channel.basicPublish("rollback", "scope:mall", MessageProperties.PERSISTENT_TEXT_PLAIN, message.getBytes());
+            log.info("rollback message sent, updating tx status");
+            AppUpdateBizTxCommand appUpdateBizTaskCommand = new AppUpdateBizTxCommand();
+            appUpdateBizTaskCommand.setTaskStatus(BizTxStatus.ROLLBACK_ACK);
+            appUpdateBizTaskCommand.setRollbackReason("Started Expired");
+            taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
+        } catch (TimeoutException | IOException e) {
+            log.error("error during rollback message deliver, tx remain fail status", e);
             throw new BizOrderSchedulerTaskRollbackException(e);
         }
     }
