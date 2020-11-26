@@ -4,10 +4,11 @@ import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.tx.command.AppCreateBizTxCommand;
 import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
 import com.hw.shared.Auditable;
-import com.hw.shared.rest.IdBasedEntity;
-import com.hw.shared.rest.VersionBasedEntity;
+import com.hw.shared.rest.Aggregate;
+import lombok.AccessLevel;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -16,7 +17,7 @@ import java.io.Serializable;
 @Table
 @Data
 @NoArgsConstructor
-public class BizTx extends Auditable implements IdBasedEntity, Serializable , VersionBasedEntity {
+public class BizTx extends Auditable implements Aggregate, Serializable {
     @Id
     private Long id;
 
@@ -33,10 +34,10 @@ public class BizTx extends Auditable implements IdBasedEntity, Serializable , Ve
     private String txId;
     private String rollbackReason;
     private Long referenceId;
-    public static final String ENTITY_REFERENCE_ID = "referenceId";
-
     @Version
+    @Setter(AccessLevel.NONE)
     private Integer version;
+    public static final String ENTITY_REFERENCE_ID = "referenceId";
 
     public static BizTx create(Long id, AppCreateBizTxCommand command) {
         return new BizTx(id, command);

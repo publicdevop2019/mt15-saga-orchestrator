@@ -4,7 +4,7 @@ import com.hw.aggregate.tx.command.AppCreateBizTxCommand;
 import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
 import com.hw.aggregate.tx.model.BizTx;
 import com.hw.aggregate.tx.representation.AppBizTxRep;
-import com.hw.shared.rest.CreatedEntityRep;
+import com.hw.shared.rest.CreatedAggregateRep;
 import com.hw.shared.rest.DefaultRoleBasedRestfulService;
 import com.hw.shared.rest.VoidTypedClass;
 import com.hw.shared.sql.RestfulQueryRegistry;
@@ -29,12 +29,12 @@ public class AppBizTxApplicationService extends DefaultRoleBasedRestfulService<B
         entityClass = BizTx.class;
         role = RestfulQueryRegistry.RoleEnum.APP;
         rollbackSupported = false;
-        
+
     }
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public CreatedEntityRep create(Object command, String changeId) {
+    public CreatedAggregateRep create(Object command, String changeId) {
         log.debug("creating task");
         return super.create(command, changeId);
     }
@@ -82,10 +82,6 @@ public class AppBizTxApplicationService extends DefaultRoleBasedRestfulService<B
 
     @Override
     protected void postPatch(BizTx bizTask, Map<String, Object> params, VoidTypedClass middleLayer) {
-
-    }
-
-    public void rollbackTransaction(String transactionId) {
 
     }
 }

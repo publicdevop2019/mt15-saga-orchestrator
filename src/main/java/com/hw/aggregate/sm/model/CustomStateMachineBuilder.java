@@ -12,8 +12,8 @@ import com.hw.aggregate.tx.exception.BizTxPersistenceException;
 import com.hw.aggregate.tx.model.BizTxStatus;
 import com.hw.aggregate.tx.representation.AppBizTxRep;
 import com.hw.shared.IdGenerator;
-import com.hw.shared.rest.CreatedEntityRep;
-import com.hw.shared.rest.exception.EntityNotExistException;
+import com.hw.shared.rest.CreatedAggregateRep;
+import com.hw.shared.rest.exception.AggregateNotExistException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -176,7 +176,7 @@ public class CustomStateMachineBuilder {
         return context -> {
             log.info("start of recycle order");
             CreateBizStateMachineCommand machineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-            CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
+            CreatedAggregateRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedAggregateRep.class);
             AppBizTxRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
             if (appBizTaskRep == null) return false;
 
@@ -227,7 +227,7 @@ public class CustomStateMachineBuilder {
             appCreateBizTaskCommand.setReferenceId(customerOrder.getOrderId());
             appCreateBizTaskCommand.setTaskName(event);
             appCreateBizTaskCommand.setTransactionId(customerOrder.getTxId());
-            CreatedEntityRep createdEntityRep = null;
+            CreatedAggregateRep createdEntityRep = null;
             try {
                 createdEntityRep = appBizTaskApplicationService.create(appCreateBizTaskCommand, UUID.randomUUID().toString());// for create task, use random uuid
             } catch (Exception e) {
@@ -256,7 +256,7 @@ public class CustomStateMachineBuilder {
     private Guard<BizOrderStatus, BizOrderEvent> createOrderTx() {
         return context -> {
             CreateBizStateMachineCommand stateMachineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-            CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
+            CreatedAggregateRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedAggregateRep.class);
             List<RuntimeException> exs = new ArrayList<>();
             AppBizTxRep appBizTxRep = getAppBizTaskRep(context, transactionalTask);
             if (appBizTxRep == null) return false;
@@ -371,12 +371,12 @@ public class CustomStateMachineBuilder {
     }
 
     @Nullable
-    private AppBizTxRep getAppBizTaskRep(StateContext<BizOrderStatus, BizOrderEvent> context, CreatedEntityRep transactionalTask) {
+    private AppBizTxRep getAppBizTaskRep(StateContext<BizOrderStatus, BizOrderEvent> context, CreatedAggregateRep transactionalTask) {
         AppBizTxRep appBizTaskRep;
         try {
             log.info("read saved task");
             appBizTaskRep = appBizTaskApplicationService.readById(transactionalTask.getId());
-        } catch (EntityNotExistException ex) {
+        } catch (AggregateNotExistException ex) {
             context.getStateMachine().setStateMachineError(ex);
             return null;
         }
@@ -387,7 +387,7 @@ public class CustomStateMachineBuilder {
         return context -> {
             log.info("start of reserveOrderTx");
             CreateBizStateMachineCommand stateMachineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-            CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
+            CreatedAggregateRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedAggregateRep.class);
             AppBizTxRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
             if (appBizTaskRep == null) return false;
 
@@ -440,7 +440,7 @@ public class CustomStateMachineBuilder {
     private Guard<BizOrderStatus, BizOrderEvent> confirmOrderTx() {
         return context -> {
             CreateBizStateMachineCommand machineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-            CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
+            CreatedAggregateRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedAggregateRep.class);
             AppBizTxRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
             if (appBizTaskRep == null) return false;
             log.info("start of decreaseActualStorage for {}", machineCommand.getOrderId());
@@ -487,7 +487,7 @@ public class CustomStateMachineBuilder {
         return context -> {
             log.info("start of updatePaymentStatus");
             CreateBizStateMachineCommand bizOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-            CreatedEntityRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
+            CreatedAggregateRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedAggregateRep.class);
             AppBizTxRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
             if (appBizTaskRep == null) return false;
 
