@@ -10,4 +10,5 @@ public class AppUpdateBizTxCommand implements Serializable {
     private static final long serialVersionUID = 1;
     private BizTxStatus taskStatus;
     private String rollbackReason;
+    private Integer version;
 }

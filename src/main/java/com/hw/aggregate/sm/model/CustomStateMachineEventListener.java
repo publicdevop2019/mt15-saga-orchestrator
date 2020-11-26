@@ -11,7 +11,7 @@ import com.hw.aggregate.tx.AppBizTxApplicationService;
 import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
 import com.hw.aggregate.tx.model.BizTxStatus;
 import com.hw.aggregate.tx.representation.AppBizTxRep;
-import com.hw.shared.rest.CreatedEntityRep;
+import com.hw.shared.rest.CreatedAggregateRep;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -63,7 +63,7 @@ public class CustomStateMachineEventListener
         log.error("start of stateMachineError, rollback transaction");
         //set error class so it can be thrown later, thrown ex here will still result 200 response
         stateMachine.getExtendedState().getVariables().put(ERROR_CLASS, exception);
-        CreatedEntityRep createdTask = stateMachine.getExtendedState().get(TX_TASK, CreatedEntityRep.class);
+        CreatedAggregateRep createdTask = stateMachine.getExtendedState().get(TX_TASK, CreatedAggregateRep.class);
         if (createdTask != null) {
             AppBizTxRep appBizTaskRep = taskService.readById(createdTask.getId());
             String s = getExceptionName(exception);
@@ -83,12 +83,11 @@ public class CustomStateMachineEventListener
     }
 
     /**
-     *
      * @param entityRep
      * @param taskRep
      * @param exceptionName
      */
-    private void sendRollbackMessage(CreatedEntityRep entityRep, AppBizTxRep taskRep, String exceptionName) {
+    private void sendRollbackMessage(CreatedAggregateRep entityRep, AppBizTxRep taskRep, String exceptionName) {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
         try (
