@@ -4,6 +4,7 @@ import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.tx.model.BizTx;
 import com.hw.aggregate.tx.model.BizTxStatus;
 import lombok.Data;
+import org.springframework.beans.BeanUtils;
 
 @Data
 public class AdminBizTxCardRep {
@@ -20,17 +21,9 @@ public class AdminBizTxCardRep {
     private long modifiedAt;
 
     public AdminBizTxCardRep(BizTx bizTask) {
-
-        this.id = bizTask.getId();
+        BeanUtils.copyProperties(bizTask, this);
         this.taskName = bizTask.getTxName();
         this.taskStatus = bizTask.getTxStatus();
         this.transactionId = bizTask.getTxId();
-        this.rollbackReason = bizTask.getRollbackReason();
-        this.referenceId = bizTask.getReferenceId();
-        this.version = bizTask.getVersion();
-        this.createdBy = bizTask.getCreatedBy();
-        this.createdAt = bizTask.getCreatedAt().getTime();
-        this.modifiedBy = bizTask.getModifiedBy();
-        this.modifiedAt = bizTask.getModifiedAt().getTime();
     }
 }

@@ -2,6 +2,7 @@ package com.hw.aggregate.tx.representation;
 
 import com.hw.aggregate.tx.model.BizTx;
 import lombok.Data;
+import org.springframework.beans.BeanUtils;
 
 @Data
 public class AppBizTxRep {
@@ -10,8 +11,8 @@ public class AppBizTxRep {
     private Long id;
 
     public AppBizTxRep(BizTx bizTask) {
+        BeanUtils.copyProperties(bizTask, this);
         this.transactionId = bizTask.getTxId();
-        this.id=bizTask.getId();
     }
 
 }
