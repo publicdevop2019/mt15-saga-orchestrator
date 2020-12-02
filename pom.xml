@@ -7,7 +7,6 @@
     <version>0.0.0a</version>
     <packaging>jar</packaging>
 
-    <name>SagaOrchestrator</name>
     <parent>
         <groupId>com.hw</groupId>
         <artifactId>config-center</artifactId>
