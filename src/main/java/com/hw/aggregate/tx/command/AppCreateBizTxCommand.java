@@ -10,5 +10,5 @@ public class AppCreateBizTxCommand implements Serializable {
     private static final long serialVersionUID = 1;
     private BizOrderEvent taskName;
     private String transactionId;
-    private Long referenceId;
+    private String referenceId;
 }

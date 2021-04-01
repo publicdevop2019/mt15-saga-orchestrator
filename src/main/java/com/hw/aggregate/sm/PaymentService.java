@@ -47,13 +47,13 @@ public class PaymentService {
         log.info("complete rollbackTransaction");
     }
 
-    public String generatePaymentLink(Long orderId,String changeId) {
+    public String generatePaymentLink(String orderId,String changeId) {
         log.info("starting generatePaymentLink");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add(HTTP_HEADER_CHANGE_ID, changeId);
         HashMap<String, String> stringStringHashMap = new HashMap<>();
-        stringStringHashMap.put("orderId", orderId.toString());
+        stringStringHashMap.put("orderId", orderId);
         String body = null;
         try {
             body = mapper.writeValueAsString(stringStringHashMap);
@@ -77,7 +77,7 @@ public class PaymentService {
         return result;
     }
 
-    public Boolean confirmPaymentStatus(Long orderId) {
+    public Boolean confirmPaymentStatus(String orderId) {
         log.info("starting confirmPaymentStatus");
         ParameterizedTypeReference<HashMap<String, Boolean>> responseType =
                 new ParameterizedTypeReference<>() {

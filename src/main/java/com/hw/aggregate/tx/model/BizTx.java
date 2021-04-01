@@ -33,7 +33,7 @@ public class BizTx extends Auditable implements Aggregate, Serializable {
 
     private String txId;
     private String rollbackReason;
-    private Long referenceId;
+    private String referenceId;
     @Version
     @Setter(AccessLevel.NONE)
     private Integer version;

@@ -7,8 +7,8 @@ import java.util.List;
 
 @Data
 public class AppCreateBizOrderCommand {
-    private long orderId;
-    private long userId;
+    private String orderId;
+    private String userId;
     private BizOrderStatus orderState;
     private String createdBy;
     private BizOrderAddressCmdRep address;

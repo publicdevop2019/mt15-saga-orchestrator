@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class AppUpdateBizOrderCommand {
-    private long orderId;
+    private String orderId;
     private Boolean paymentStatus;
     private BizOrderStatus orderState;
     private Integer version;

@@ -19,7 +19,7 @@ public class BizOrderItem implements Serializable {
 
     private BigDecimal finalPrice;
 
-    private Long productId;
+    private String productId;
     private Set<String> attributesSales;
 
     private String imageUrlSmall;

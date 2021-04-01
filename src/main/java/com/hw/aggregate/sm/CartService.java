@@ -39,7 +39,7 @@ public class CartService {
         log.info("complete rollbackTransaction");
     }
 
-    public void clearCart(long userId, String changeId) {
+    public void clearCart(String userId, String changeId) {
         log.info("starting clearCart");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

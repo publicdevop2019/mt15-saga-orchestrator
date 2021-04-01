@@ -14,9 +14,9 @@ import java.util.List;
 @Data
 public class CreateBizStateMachineCommand implements Serializable {
     private static final long serialVersionUID = 1;
-    private long orderId;
+    private String orderId;
     private String txId;
-    private long userId;
+    private String userId;
     private BizOrderStatus orderState;
     private BizOrderEvent bizOrderEvent;
     private BizOrderEvent prepareEvent;
