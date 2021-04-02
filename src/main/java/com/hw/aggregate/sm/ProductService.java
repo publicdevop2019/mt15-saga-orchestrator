@@ -1,6 +1,6 @@
 package com.hw.aggregate.sm;
 
-import com.hw.shared.EurekaRegistryHelper;
+import com.hw.config.EurekaHelper;
 import com.hw.shared.ResourceServiceTokenHelper;
 import com.hw.shared.sql.PatchCommand;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +11,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
@@ -21,18 +22,19 @@ import static com.hw.shared.AppConstant.HTTP_PARAM_QUERY;
 @Slf4j
 public class ProductService {
 
-    @Autowired
-    private EurekaRegistryHelper eurekaRegistryHelper;
-
-    @Value("${url.products.app}")
+    @Value("${mt.url.mall.product}")
     private String productUrl;
 
-    @Value("${url.products.change.app}")
+    @Value("${mt.url.mall.change}")
     private String changeUrl;
 
     @Autowired
-    private ResourceServiceTokenHelper tokenHelper;
+    private EurekaHelper eurekaHelper;
+    @Autowired
+    private RestTemplate restTemplate;
 
+    @Value("${mt.discovery.mall}")
+    private String appName;
 
     public void updateProductStorage(List<PatchCommand> changeList, String txId) {
         log.info("starting updateProductStorage");
@@ -40,7 +42,8 @@ public class ProductService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add(HTTP_HEADER_CHANGE_ID, txId);
         HttpEntity<List<PatchCommand>> hashMapHttpEntity = new HttpEntity<>(changeList, headers);
-        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + productUrl, HttpMethod.PATCH, hashMapHttpEntity, String.class);
+        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
+        restTemplate.exchange(applicationUrl + productUrl, HttpMethod.PATCH, hashMapHttpEntity, String.class);
         log.info("complete updateProductStorage");
     }
 
@@ -49,7 +52,8 @@ public class ProductService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
-        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + HTTP_HEADER_CHANGE_ID + ":" + changeId, HttpMethod.DELETE, hashMapHttpEntity, String.class);
+        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
+        restTemplate.exchange(applicationUrl + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + HTTP_HEADER_CHANGE_ID + ":" + changeId, HttpMethod.DELETE, hashMapHttpEntity, String.class);
         log.info("complete rollbackTransaction");
     }
 

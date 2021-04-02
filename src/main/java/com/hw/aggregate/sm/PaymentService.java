@@ -2,14 +2,14 @@ package com.hw.aggregate.sm;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hw.shared.EurekaRegistryHelper;
-import com.hw.shared.ResourceServiceTokenHelper;
+import com.hw.config.EurekaHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 
@@ -20,34 +20,37 @@ import static com.hw.shared.AppConstant.HTTP_PARAM_QUERY;
 @Slf4j
 public class PaymentService {
 
-    @Value("${url.payment.confirm}")
+    @Value("${mt.url.payment.wechat.confirm}")
     private String confirmUrl;
 
-    @Value("${url.payment.link}")
+    @Value("${mt.url.payment.wechat.create}")
     private String paymentUrl;
 
-    @Value("${url.payment.change.app}")
+    @Value("${mt.url.payment.change.rollback}")
     private String changeUrl;
+    @Value("${mt.discovery.payment}")
+    private String appName;
 
     @Autowired
-    private EurekaRegistryHelper eurekaRegistryHelper;
-
-    @Autowired
-    private ResourceServiceTokenHelper tokenHelper;
+    private RestTemplate restTemplate;
 
     @Autowired
     private ObjectMapper mapper;
+    @Autowired
+    private EurekaHelper eurekaHelper;
 
     public void rollbackTransaction(String changeId) {
         log.info("starting rollbackTransaction");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
-        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + HTTP_HEADER_CHANGE_ID + ":" + changeId, HttpMethod.DELETE, hashMapHttpEntity, String.class);
+        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
+        log.debug("target url {}", applicationUrl);
+        restTemplate.exchange(applicationUrl + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + HTTP_HEADER_CHANGE_ID + ":" + changeId, HttpMethod.DELETE, hashMapHttpEntity, String.class);
         log.info("complete rollbackTransaction");
     }
 
-    public String generatePaymentLink(String orderId,String changeId) {
+    public String generatePaymentLink(String orderId, String changeId) {
         log.info("starting generatePaymentLink");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -66,7 +69,9 @@ public class PaymentService {
                 new ParameterizedTypeReference<>() {
                 };
         HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(body, headers);
-        ResponseEntity<HashMap<String, String>> exchange = tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + paymentUrl, HttpMethod.POST, hashMapHttpEntity, responseType);
+        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
+        log.debug("target url {}", applicationUrl);
+        ResponseEntity<HashMap<String, String>> exchange = restTemplate.exchange(applicationUrl + paymentUrl, HttpMethod.POST, hashMapHttpEntity, responseType);
         String result = null;
         if (exchange.getBody() != null) {
             result = exchange.getBody().get("paymentLink");
@@ -85,7 +90,8 @@ public class PaymentService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
-        ResponseEntity<HashMap<String, Boolean>> exchange = tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + confirmUrl + "/" + orderId, HttpMethod.GET, hashMapHttpEntity, responseType);
+        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
+        ResponseEntity<HashMap<String, Boolean>> exchange = restTemplate.exchange(applicationUrl + confirmUrl + "/" + orderId, HttpMethod.GET, hashMapHttpEntity, responseType);
         Boolean result = null;
         if (exchange.getBody() != null) {
             result = exchange.getBody().get("paymentStatus");

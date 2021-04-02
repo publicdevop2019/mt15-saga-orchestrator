@@ -1,9 +1,6 @@
 package com.hw.aggregate.sm;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hw.shared.EurekaRegistryHelper;
-import com.hw.shared.ResourceServiceTokenHelper;
+import com.hw.config.EurekaHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +10,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
 
@@ -20,33 +18,24 @@ import java.util.Map;
 @Service
 public class MessengerService {
 
-    @Autowired
-    private EurekaRegistryHelper eurekaRegistryHelper;
-
-    @Value("${url.notify}")
+    @Value("${mt.url.messenger.notify}")
     private String notifyUrl;
 
+    @Value("${mt.discovery.messenger}")
+    private String appName;
     @Autowired
-    private ObjectMapper mapper;
-
+    private EurekaHelper eurekaHelper;
     @Autowired
-    private ResourceServiceTokenHelper tokenHelper;
+    private RestTemplate restTemplate;
 
     @Async
     public void notifyBusinessOwner(Map<String, String> contentMap) {
         log.info("starting notifyBusinessOwner");
-        String body = null;
-        try {
-            body = mapper.writeValueAsString(contentMap);
-        } catch (JsonProcessingException e) {
-            /**
-             * this block is purposely left blank
-             */
-        }
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(body, headers);
-        tokenHelper.exchange(eurekaRegistryHelper.getProxyHomePageUrl() + notifyUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
+        HttpEntity<Map<String, String>> mapHttpEntity = new HttpEntity<>(contentMap, headers);
+        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
+        restTemplate.exchange(applicationUrl + notifyUrl, HttpMethod.POST, mapHttpEntity, String.class);
         log.info("complete notifyBusinessOwner");
     }
 }
