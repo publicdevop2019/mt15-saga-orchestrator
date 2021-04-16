@@ -1,13 +1,7 @@
 package com.hw.aggregate.tx;
 
-import com.hw.aggregate.sm.exception.BizOrderSchedulerTaskRollbackException;
-import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
 import com.hw.aggregate.tx.model.BizTx;
-import com.hw.aggregate.tx.model.BizTxStatus;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.MessageProperties;
+import com.hw.aggregate.tx.model.TxStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -20,16 +14,11 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-
-import static com.hw.shared.AppConstant.HTTP_HEADER_CHANGE_ID;
 
 @Slf4j
 @EnableScheduling
@@ -62,9 +51,9 @@ public class BizTxScheduler {
                                     Optional<BizTx> byIdOptLock = taskRepository.findByIdOptLock(task.getId());
                                     if (byIdOptLock.isPresent()
                                             && byIdOptLock.get().getCreatedAt().compareTo(from) < 0
-                                            && byIdOptLock.get().getTxStatus().equals(BizTxStatus.STARTED)
+                                            && byIdOptLock.get().getTxStatus().equals(TxStatus.STARTED)
                                     ) {
-                                        rollback(task);
+//                                        rollback(task);
                                     }
 
                                 }
@@ -74,27 +63,6 @@ public class BizTxScheduler {
                     log.error("rollback task {} failed", task.getId(), e);
                 }
             });
-        }
-    }
-
-    private void rollback(BizTx entityRep) {
-        ConnectionFactory factory = new ConnectionFactory();
-        factory.setHost("localhost");
-        try (
-                Connection connection = factory.newConnection();
-                Channel channel = connection.createChannel();
-        ) {
-            channel.exchangeDeclare("rollback", "direct");
-            String message = HTTP_HEADER_CHANGE_ID + ":" + entityRep.getTxId();
-            channel.basicPublish("rollback", "scope:mall", MessageProperties.PERSISTENT_TEXT_PLAIN, message.getBytes());
-            log.info("rollback message sent, updating tx status");
-            AppUpdateBizTxCommand appUpdateBizTaskCommand = new AppUpdateBizTxCommand();
-            appUpdateBizTaskCommand.setTaskStatus(BizTxStatus.ROLLBACK_ACK);
-            appUpdateBizTaskCommand.setRollbackReason("Started Expired");
-            taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
-        } catch (TimeoutException | IOException e) {
-            log.error("error during rollback message deliver, tx remain fail status", e);
-            throw new BizOrderSchedulerTaskRollbackException(e);
         }
     }
 

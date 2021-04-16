@@ -2,15 +2,16 @@ package com.hw.aggregate.tx.representation;
 
 import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.tx.model.BizTx;
-import com.hw.aggregate.tx.model.BizTxStatus;
+import com.hw.aggregate.tx.model.TxName;
+import com.hw.aggregate.tx.model.TxStatus;
 import lombok.Data;
 import org.springframework.beans.BeanUtils;
 
 @Data
 public class AdminBizTxCardRep {
     private Long id;
-    private BizOrderEvent taskName;
-    private BizTxStatus taskStatus;
+    private TxName taskName;
+    private TxStatus taskStatus;
     private String transactionId;
     private Long referenceId;
     private String rollbackReason;

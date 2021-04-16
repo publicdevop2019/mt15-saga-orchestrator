@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 @Data
-public class BizOrderItem implements Serializable {
+public class CartDetail implements Serializable {
 
     private static final long serialVersionUID = 1;
 
@@ -20,6 +20,8 @@ public class BizOrderItem implements Serializable {
     private BigDecimal finalPrice;
 
     private String productId;
+    private String skuId;
+    private String cartId;
     private Set<String> attributesSales;
 
     private String imageUrlSmall;

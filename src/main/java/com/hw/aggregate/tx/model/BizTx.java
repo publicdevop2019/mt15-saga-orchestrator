@@ -1,13 +1,9 @@
 package com.hw.aggregate.tx.model;
 
-import com.hw.aggregate.sm.model.order.BizOrderEvent;
-import com.hw.aggregate.tx.command.AppCreateBizTxCommand;
-import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
 import com.hw.shared.Auditable;
 import com.hw.shared.rest.Aggregate;
 import lombok.AccessLevel;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
@@ -16,44 +12,57 @@ import java.io.Serializable;
 @Entity
 @Table
 @Data
-@NoArgsConstructor
 public class BizTx extends Auditable implements Aggregate, Serializable {
+    public static final String ENTITY_TX_NAME = "txName";
+    public static final String ENTITY_TX_STATUS = "txStatus";
+    public static final String ENTITY_REFERENCE_ID = "referenceId";
     @Id
     private Long id;
 
     @Column(length = 50)
-    @Convert(converter = BizOrderEvent.DBConverter.class)
-    private BizOrderEvent txName;
-    public static final String ENTITY_TX_NAME = "txName";
+    @Convert(converter = TxName.DBConverter.class)
+    private TxName txName;
 
     @Column(length = 25)
-    @Convert(converter = BizTxStatus.DBConverter.class)
-    private BizTxStatus txStatus;
-    public static final String ENTITY_TX_STATUS = "txStatus";
+    @Convert(converter = TxStatus.DBConverter.class)
+    private TxStatus txStatus;
 
     private String txId;
-    private String rollbackReason;
-    private String referenceId;
+
+    private String cancelTxId;
+    @Lob
+    private String createBizStateMachineCommand;
+    @Embedded
+    private CreateOrderTx createOrderTx;
+
+    private SubTxStatus decreaseOrderStorageTxStatus = SubTxStatus.STARTED;
+
+    @Embedded
+    private GeneratePaymentLinkTx generatePaymentLinkTx;
+
+    private SubTxStatus removeItemsFromCartStatus = SubTxStatus.STARTED;
+    @Embedded
+    private ValidateOrderTx validateOrderTx;
+
     @Version
     @Setter(AccessLevel.NONE)
     private Integer version;
-    public static final String ENTITY_REFERENCE_ID = "referenceId";
 
-    public static BizTx create(Long id, AppCreateBizTxCommand command) {
-        return new BizTx(id, command);
+    public static BizTx createTx(Long id, String command, String changeId) {
+        return new BizTx(id, command, changeId);
     }
 
-    public BizTx(Long id, AppCreateBizTxCommand command) {
+    public BizTx(Long id, String command, String changeId) {
         this.id = id;
-        this.txName = command.getTaskName();
-        this.txStatus = BizTxStatus.STARTED;
-        this.txId = command.getTransactionId();
-        this.referenceId = command.getReferenceId();
+        this.txName = TxName.CREATE_ORDER;
+        this.txStatus = TxStatus.STARTED;
+        this.txId = changeId;
+        this.cancelTxId = changeId + "_cancel";
+        createBizStateMachineCommand = command;
+        createOrderTx = new CreateOrderTx();
+        generatePaymentLinkTx = new GeneratePaymentLinkTx();
+        validateOrderTx = new ValidateOrderTx();
     }
 
-    public BizTx replace(AppUpdateBizTxCommand command) {
-        this.setTxStatus(command.getTaskStatus());
-        this.setRollbackReason(command.getRollbackReason());
-        return this;
-    }
+
 }

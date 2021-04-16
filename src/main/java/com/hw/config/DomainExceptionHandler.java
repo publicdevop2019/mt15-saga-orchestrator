@@ -23,6 +23,7 @@ public class DomainExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(value = {
             BizOrderValidationException.class,
+            BizOrderInvalidException.class,
             BizOrderStorageDecreaseException.class,
             CartClearException.class,
             PaymentConfirmationFailedException.class,

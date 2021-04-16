@@ -16,7 +16,6 @@ import org.springframework.web.client.RestTemplate;
 import java.util.List;
 
 import static com.hw.shared.AppConstant.HTTP_HEADER_CHANGE_ID;
-import static com.hw.shared.AppConstant.HTTP_PARAM_QUERY;
 
 @Slf4j
 @Service
@@ -36,49 +35,42 @@ public class OrderService {
     @Autowired
     private RestTemplate restTemplate;
 
-    public void validateOrder(List<BizOrderItem> productList) {
+    public void validateOrder(List<CartDetail> productList, String orderId) {
         log.info("starting validateOrder");
         HttpHeaders headers = new HttpHeaders();
         AppValidateBizOrderCommand appValidateBizOrderCommand = new AppValidateBizOrderCommand();
         appValidateBizOrderCommand.setProductList(productList);
+        appValidateBizOrderCommand.setOrderId(orderId);
         HttpEntity<AppValidateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appValidateBizOrderCommand, headers);
         String applicationUrl = eurekaHelper.getApplicationUrl(appName);
         restTemplate.exchange(applicationUrl + orderValidateUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
         log.info("complete validateOrder");
     }
 
-    public void saveConcludeOrder(CreateBizStateMachineCommand machineCommand, BizOrderStatus status) {
-        log.info("starting saveConcludeOrder");
+    public void saveConcludeOrder(CreateBizStateMachineCommand machineCommand) {
+        updateOrder(machineCommand, AppUpdateBizOrderCommand.CommandType.CONCLUDE);
+    }
+
+    private void updateOrder(CreateBizStateMachineCommand machineCommand, AppUpdateBizOrderCommand.CommandType commandType) {
+        log.info("starting update order to {}", commandType);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add(HTTP_HEADER_CHANGE_ID, machineCommand.getTxId());
-        AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
-        appCreateBizOrderCommand.setOrderId(machineCommand.getOrderId());
-        appCreateBizOrderCommand.setOrderState(status);
-        appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
-        appCreateBizOrderCommand.setVersion(machineCommand.getVersion());
-        HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+        AppUpdateBizOrderCommand command = new AppUpdateBizOrderCommand();
+        command.setOrderId(machineCommand.getOrderId());
+        command.setCommandType(commandType);
+        command.setVersion(machineCommand.getVersion());
+        HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(command, headers);
         String applicationUrl = eurekaHelper.getApplicationUrl(appName);
         restTemplate.exchange(applicationUrl + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
-        log.info("complete saveConcludeOrder");
+        log.info("starting update order to {}", commandType);
     }
 
-    public void saveReservedOrder(CreateBizStateMachineCommand machineCommand, BizOrderStatus status) {
-        log.info("starting saveReservedOrder");
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add(HTTP_HEADER_CHANGE_ID, machineCommand.getTxId());
-        AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
-        appCreateBizOrderCommand.setOrderId(machineCommand.getOrderId());
-        appCreateBizOrderCommand.setOrderState(status);
-        appCreateBizOrderCommand.setVersion(machineCommand.getVersion());
-        HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
-        restTemplate.exchange(applicationUrl + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
-        log.info("complete saveReservedOrder");
+    public void saveReservedOrder(CreateBizStateMachineCommand machineCommand) {
+        updateOrder(machineCommand, AppUpdateBizOrderCommand.CommandType.CANCEL_RECYCLE);
     }
 
-    public void saveNewOrder(String paymentLink, BizOrderStatus status, CreateBizStateMachineCommand command) {
+    public void saveNewOrder(String paymentLink, CreateBizStateMachineCommand command) {
         log.info("starting saveNewOrder");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -87,7 +79,7 @@ public class OrderService {
         appCreateBizOrderCommand.setAddress(command.getAddress());
         appCreateBizOrderCommand.setCreatedBy(command.getCreatedBy());
         appCreateBizOrderCommand.setOrderId(command.getOrderId());
-        appCreateBizOrderCommand.setOrderState(status);
+        appCreateBizOrderCommand.setOrderState(BizOrderStatus.DRAFT);
         appCreateBizOrderCommand.setPaymentAmt(command.getPaymentAmt());
         appCreateBizOrderCommand.setPaymentType(command.getPaymentType());
         appCreateBizOrderCommand.setPaymentLink(paymentLink);
@@ -99,44 +91,11 @@ public class OrderService {
         log.info("complete saveNewOrder");
     }
 
-    public void savePaidOrder(CreateBizStateMachineCommand command, BizOrderStatus status) {
-        log.info("starting savePaidOrder");
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
-        AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
-        appCreateBizOrderCommand.setOrderId(command.getOrderId());
-        appCreateBizOrderCommand.setOrderState(status);
-        appCreateBizOrderCommand.setPaymentStatus(Boolean.TRUE);
-        appCreateBizOrderCommand.setVersion(command.getVersion());
-        HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
-        restTemplate.exchange(applicationUrl + orderUrl + "/" + command.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
-        log.info("complete savePaidOrder");
+    public void savePaidOrder(CreateBizStateMachineCommand command) {
+        updateOrder(command, AppUpdateBizOrderCommand.CommandType.CONFIRM_PAYMENT);
     }
 
-    public void rollbackTransaction(String changeId) {
-        log.info("starting rollbackTransaction");
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
-        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
-        restTemplate.exchange(applicationUrl + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + HTTP_HEADER_CHANGE_ID + ":" + changeId, HttpMethod.DELETE, hashMapHttpEntity, String.class);
-        log.info("complete rollbackTransaction");
-    }
-
-    public void saveRecycleOrder(CreateBizStateMachineCommand command, BizOrderStatus orderStatus) {
-        log.info("starting saveRecycleOrder");
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
-        AppUpdateBizOrderCommand appCreateBizOrderCommand = new AppUpdateBizOrderCommand();
-        appCreateBizOrderCommand.setOrderId(command.getOrderId());
-        appCreateBizOrderCommand.setOrderState(orderStatus);
-        appCreateBizOrderCommand.setVersion(command.getVersion());
-        HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
-        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
-        restTemplate.exchange(applicationUrl + orderUrl + "/" + command.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
-        log.info("complete saveRecycleOrder");
+    public void saveRecycleOrder(CreateBizStateMachineCommand command) {
+        updateOrder(command, AppUpdateBizOrderCommand.CommandType.RECYCLE);
     }
 }

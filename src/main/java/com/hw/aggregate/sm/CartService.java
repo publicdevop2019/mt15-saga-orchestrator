@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Set;
+
 import static com.hw.shared.AppConstant.HTTP_HEADER_CHANGE_ID;
 import static com.hw.shared.AppConstant.HTTP_PARAM_QUERY;
 import static com.hw.shared.Auditable.ENTITY_CREATED_BY;
@@ -41,14 +43,15 @@ public class CartService {
         log.info("complete rollbackTransaction");
     }
 
-    public void clearCart(String userId, String changeId) {
+    public void clearCart(String userId, Set<String> cartIds, String changeId) {
         log.info("starting clearCart");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set(HTTP_HEADER_CHANGE_ID, changeId);
         HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
         String applicationUrl = eurekaHelper.getApplicationUrl(appName);
-        restTemplate.exchange(applicationUrl + url + "?" + HTTP_PARAM_QUERY + "=" + ENTITY_CREATED_BY + ":" + userId, HttpMethod.DELETE, hashMapHttpEntity, Void.class);
+        String query = "id:" + String.join(".", cartIds);
+        restTemplate.exchange(applicationUrl + url + "?" + HTTP_PARAM_QUERY + "=" + ENTITY_CREATED_BY + ":" + userId + "," + query, HttpMethod.DELETE, hashMapHttpEntity, Void.class);
         log.info("complete clearCart");
     }
 }

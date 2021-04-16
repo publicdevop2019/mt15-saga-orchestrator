@@ -6,5 +6,6 @@ import java.util.List;
 
 @Data
 public class AppValidateBizOrderCommand {
-    private List<BizOrderItem> productList;
+    private List<CartDetail> productList;
+    private String orderId;
 }

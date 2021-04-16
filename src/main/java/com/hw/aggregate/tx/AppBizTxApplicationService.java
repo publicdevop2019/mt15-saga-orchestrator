@@ -1,7 +1,5 @@
 package com.hw.aggregate.tx;
 
-import com.hw.aggregate.tx.command.AppCreateBizTxCommand;
-import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
 import com.hw.aggregate.tx.model.BizTx;
 import com.hw.aggregate.tx.representation.AppBizTxRep;
 import com.hw.shared.rest.CreatedAggregateRep;
@@ -9,14 +7,9 @@ import com.hw.shared.rest.RoleBasedRestfulService;
 import com.hw.shared.rest.VoidTypedClass;
 import com.hw.shared.sql.RestfulQueryRegistry;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
-import javax.annotation.PostConstruct;
-import javax.persistence.EntityManager;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -41,18 +34,8 @@ public class AppBizTxApplicationService extends RoleBasedRestfulService<BizTx, V
     }
 
     @Override
-    public BizTx replaceEntity(BizTx bizTask, Object command) {
-        return bizTask.replace((AppUpdateBizTxCommand) command);
-    }
-
-    @Override
     public AppBizTxRep getEntityRepresentation(BizTx bizTask) {
         return new AppBizTxRep(bizTask);
-    }
-
-    @Override
-    protected BizTx createEntity(long id, Object command) {
-        return BizTx.create(id, (AppCreateBizTxCommand) command);
     }
 
 }

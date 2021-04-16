@@ -8,14 +8,8 @@ import com.hw.aggregate.sm.exception.MultipleStateMachineException;
 import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.sm.model.order.BizOrderStatus;
 import com.hw.aggregate.tx.AppBizTxApplicationService;
-import com.hw.aggregate.tx.command.AppUpdateBizTxCommand;
-import com.hw.aggregate.tx.model.BizTxStatus;
 import com.hw.aggregate.tx.representation.AppBizTxRep;
 import com.hw.shared.rest.CreatedAggregateRep;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.MessageProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,13 +18,9 @@ import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.listener.StateMachineListenerAdapter;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
-import java.util.UUID;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static com.hw.aggregate.sm.model.CustomStateMachineBuilder.TX_TASK;
-import static com.hw.shared.AppConstant.HTTP_HEADER_CHANGE_ID;
 
 @Slf4j
 @Component
@@ -70,7 +60,6 @@ public class CustomStateMachineEventListener
             if (exception instanceof MultipleStateMachineException) {
                 s = ((MultipleStateMachineException) exception).getExs().stream().map(this::getExceptionName).collect(Collectors.joining(","));
             }
-            sendRollbackMessage(createdTask, appBizTaskRep, s);
         } else {
             log.info("error happened in non-transactional context, no rollback will be triggered");
         }
@@ -82,28 +71,4 @@ public class CustomStateMachineEventListener
         return s;
     }
 
-    /**
-     * @param entityRep
-     * @param taskRep
-     * @param exceptionName
-     */
-    private void sendRollbackMessage(CreatedAggregateRep entityRep, AppBizTxRep taskRep, String exceptionName) {
-        ConnectionFactory factory = new ConnectionFactory();
-        factory.setHost("localhost");
-        try (
-                Connection connection = factory.newConnection();
-                Channel channel = connection.createChannel();
-        ) {
-            channel.exchangeDeclare("rollback", "direct");
-            String message = HTTP_HEADER_CHANGE_ID + ":" + taskRep.getTransactionId();
-            channel.basicPublish("rollback", "scope:mall", MessageProperties.PERSISTENT_TEXT_PLAIN, message.getBytes());
-            log.info("rollback message sent, updating tx status");
-            AppUpdateBizTxCommand appUpdateBizTaskCommand = new AppUpdateBizTxCommand();
-            appUpdateBizTaskCommand.setTaskStatus(BizTxStatus.ROLLBACK_ACK);
-            appUpdateBizTaskCommand.setRollbackReason(exceptionName);
-            taskService.replaceById(entityRep.getId(), appUpdateBizTaskCommand, UUID.randomUUID().toString());
-        } catch (TimeoutException | IOException e) {
-            log.error("error during rollback message deliver, tx remain fail status", e);
-        }
-    }
 }

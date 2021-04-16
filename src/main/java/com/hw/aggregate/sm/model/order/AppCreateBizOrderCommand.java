@@ -12,7 +12,7 @@ public class AppCreateBizOrderCommand {
     private BizOrderStatus orderState;
     private String createdBy;
     private BizOrderAddressCmdRep address;
-    private List<BizOrderItem> productList;
+    private List<CartDetail> productList;
     private String paymentType;
     private BigDecimal paymentAmt;
     private String paymentLink;
