@@ -8,13 +8,13 @@ import javax.persistence.Convert;
 
 @Setter
 @Getter
-public class ValidateOrderTx {
+public class ValidateOrderSubTask {
     @Column(name = "validateStatus")
-    @Convert(converter = SubTxStatus.DBConverter.class)
-    private SubTxStatus status = SubTxStatus.STARTED;
+    @Convert(converter = SubTaskStatus.DBConverter.class)
+    private SubTaskStatus status = SubTaskStatus.STARTED;
     @Column(name = "validateResult")
     private Boolean result;
 
-    public ValidateOrderTx() {
+    public ValidateOrderSubTask() {
     }
 }

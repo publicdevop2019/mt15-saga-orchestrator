@@ -13,9 +13,9 @@ import static com.hw.shared.AppConstant.*;
 
 @RestController
 @RequestMapping(produces = "application/json", path = "tasks")
-public class BizTxController {
+public class TaskController {
     @Autowired
-    AdminBizTxApplicationService adminBizTaskApplicationService;
+    AdminTaskApplicationService adminBizTaskApplicationService;
 
 
     @GetMapping("admin")

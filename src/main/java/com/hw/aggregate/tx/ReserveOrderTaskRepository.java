@@ -1,6 +1,6 @@
 package com.hw.aggregate.tx;
 
-import com.hw.aggregate.tx.model.CreateOrderBizTx;
+import com.hw.aggregate.tx.model.ReserveOrderTask;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -12,12 +12,12 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface BizTxRepository extends JpaRepository<CreateOrderBizTx, Long> {
-    @Query("SELECT p FROM #{#entityName} as p WHERE p.createdAt < ?1 AND (p.txStatus = 'STARTED' OR p.txStatus = 'FAILED')")
-    List<CreateOrderBizTx> findExpiredStartedOrFailTxs(Date from);
+public interface ReserveOrderTaskRepository extends JpaRepository<ReserveOrderTask, Long> {
+    @Query("SELECT p FROM #{#entityName} as p WHERE p.createdAt < ?1 AND (p.taskStatus = 'STARTED' OR p.taskStatus = 'FAILED')")
+    List<ReserveOrderTask> findExpiredStartedOrFailTxs(Date from);
 
     @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
     @Query("SELECT p FROM #{#entityName} as p WHERE p.id = ?1")
-    Optional<CreateOrderBizTx> findByIdOptLock(Long id);
+    Optional<ReserveOrderTask> findByIdOptLock(Long id);
 
 }

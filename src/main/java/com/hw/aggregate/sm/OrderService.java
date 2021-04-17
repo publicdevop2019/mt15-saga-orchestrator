@@ -34,14 +34,19 @@ public class OrderService {
     private EurekaHelper eurekaHelper;
     @Autowired
     private RestTemplate restTemplate;
-@Autowired
-private CartService cartService;
+
     public void concludeOrder(CreateBizStateMachineCommand machineCommand) {
         updateOrder(machineCommand, AppUpdateBizOrderCommand.CommandType.CONCLUDE);
     }
 
-    public void saveReservedOrder(CreateBizStateMachineCommand machineCommand) {
-        updateOrder(machineCommand, AppUpdateBizOrderCommand.CommandType.CANCEL_RECYCLE);
+    public void reservedOrder(CreateBizStateMachineCommand machineCommand) {
+        updateOrder(machineCommand, AppUpdateBizOrderCommand.CommandType.RESERVE);
+    }
+
+    public void cancelReservedOrder(CreateBizStateMachineCommand machineCommand, String cancelTxId, String txId) {
+        log.info("start of cancel created order");
+        updateOrder(machineCommand, AppUpdateBizOrderCommand.CommandType.CANCEL_RESERVE, cancelTxId);
+        log.info("end of cancel created order");
     }
 
     public void createNewOrder(String paymentLink, CreateBizStateMachineCommand command) {
@@ -66,24 +71,27 @@ private CartService cartService;
     }
 
     public void cancelCreateNewOrder(CreateBizStateMachineCommand command, String cancelTxId, String txId) {
-        log.info("start cancel order");
-        if(cartService.hasChange(txId)){
-
+        log.info("start of cancel created order");
         updateOrder(command, AppUpdateBizOrderCommand.CommandType.CANCEL_CREATE, cancelTxId);
-        }
-        log.info("complete cancel order");
+        log.info("end of cancel created order");
     }
 
-    public void cancelConcludeOrder(CreateBizStateMachineCommand command, String cancelTxId) {
+    public void cancelConcludeOrder(CreateBizStateMachineCommand command, String cancelTxId, String txId) {
+        log.info("start of cancel conclude order");
         updateOrder(command, AppUpdateBizOrderCommand.CommandType.CANCEL_CONCLUDE, cancelTxId);
+        log.info("end of cancel conclude order");
     }
 
-    public void cancelConfirmPayment(CreateBizStateMachineCommand command, String cancelTxId) {
+    public void cancelConfirmPayment(CreateBizStateMachineCommand command, String cancelTxId, String txId) {
+        log.info("start of cancel conclude order");
         updateOrder(command, AppUpdateBizOrderCommand.CommandType.CANCEL_CONFIRM_PAYMENT, cancelTxId);
+        log.info("end of cancel conclude order");
     }
 
-    public void cancelRecycleOrder(CreateBizStateMachineCommand command, String cancelTxId) {
+    public void cancelRecycleOrder(CreateBizStateMachineCommand command, String cancelTxId, String txId) {
+        log.info("start of cancel recycle order");
         updateOrder(command, AppUpdateBizOrderCommand.CommandType.CANCEL_RECYCLE, cancelTxId);
+        log.info("end of cancel recycle order");
     }
 
     public void confirmPayment(CreateBizStateMachineCommand command) {

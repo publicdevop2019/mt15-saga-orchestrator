@@ -4,8 +4,8 @@ import com.hw.aggregate.sm.model.order.CartDetail;
 
 import java.util.List;
 
-public class UpdateOrderTx {
-    private SubTxStatus status;
+public class UpdateOrderSubTask {
+    private SubTaskStatus status;
     private List<CartDetail> productList;
     private boolean result;
 }

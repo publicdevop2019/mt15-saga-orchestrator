@@ -130,12 +130,6 @@ public class ProductService {
             salesCmd.setValue(String.valueOf(amount));
             salesCmd.setPath(getPatchPath(e, "sales"));
             salesCmd.setExpect(1);
-            PatchCommand totalSalesCmd = new PatchCommand();
-            totalSalesCmd.setOp(PATCH_OP_TYPE_SUM);
-            totalSalesCmd.setValue(String.valueOf(amount));
-            totalSalesCmd.setPath("/" + e.getProductId() + "/" + "totalSales");
-            totalSalesCmd.setExpect(1);
-            details.add(totalSalesCmd);
             details.add(storageActualCmd);
             details.add(salesCmd);
         });
@@ -242,13 +236,13 @@ public class ProductService {
         return deepCopy;
     }
 
-    public boolean hasChange(String changeId) {
+    private boolean hasChange(String changeId) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set(HTTP_HEADER_CHANGE_ID, changeId);
         HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
         String applicationUrl = eurekaHelper.getApplicationUrl(appName);
-        ResponseEntity<SumPagedRep> exchange = restTemplate.exchange(applicationUrl + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + "changeId:" + changeId, HttpMethod.GET, hashMapHttpEntity, SumPagedRep.class);
+        ResponseEntity<SumPagedRep> exchange = restTemplate.exchange(applicationUrl + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + "entityType:Sku,changeId:" + changeId, HttpMethod.GET, hashMapHttpEntity, SumPagedRep.class);
         return exchange.getBody().getData().size() == 1;
     }
 }

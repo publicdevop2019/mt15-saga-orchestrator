@@ -6,7 +6,7 @@ import com.hw.aggregate.sm.PaymentService;
 import com.hw.aggregate.sm.ProductService;
 import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.sm.model.order.BizOrderStatus;
-import com.hw.aggregate.tx.AppBizTxApplicationService;
+import com.hw.aggregate.tx.AppTaskApplicationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -33,7 +33,7 @@ public class CustomStateMachineEventListener
 
 
     @Autowired
-    private AppBizTxApplicationService taskService;
+    private AppTaskApplicationService taskService;
 
     @Autowired
     private OrderService orderService;

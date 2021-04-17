@@ -18,9 +18,11 @@ public class AppUpdateBizOrderCommand {
         CANCEL_CREATE,
         CANCEL_CONCLUDE,
         CANCEL_CONFIRM_PAYMENT,
+        CANCEL_RESERVE,
         CANCEL_RECYCLE,
         CONCLUDE,
         CONFIRM_PAYMENT,
+        RESERVE,
         USER_DELETE,
         RECYCLE;
     }

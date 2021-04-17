@@ -8,12 +8,9 @@ import com.hw.aggregate.sm.exception.*;
 import com.hw.aggregate.sm.model.order.BizOrderEvent;
 import com.hw.aggregate.sm.model.order.BizOrderStatus;
 import com.hw.aggregate.sm.model.order.CartDetail;
-import com.hw.aggregate.tx.AppBizTxApplicationService;
-import com.hw.aggregate.tx.BizTxRepository;
+import com.hw.aggregate.tx.*;
 import com.hw.aggregate.tx.exception.BizTxPersistenceException;
-import com.hw.aggregate.tx.model.CreateOrderBizTx;
-import com.hw.aggregate.tx.model.SubTxStatus;
-import com.hw.aggregate.tx.model.TxStatus;
+import com.hw.aggregate.tx.model.*;
 import com.hw.aggregate.tx.representation.AppBizTxRep;
 import com.hw.shared.IdGenerator;
 import com.hw.shared.rest.CreatedAggregateRep;
@@ -69,7 +66,7 @@ public class CustomStateMachineBuilder {
     private AppBizStateMachineApplicationService stateMachineApplicationService;
 
     @Autowired
-    private AppBizTxApplicationService appBizTaskApplicationService;
+    private AppTaskApplicationService appBizTaskApplicationService;
 
     @Autowired
     @Qualifier("CustomPool")
@@ -87,7 +84,15 @@ public class CustomStateMachineBuilder {
     @Autowired
     private IdGenerator idGenerator;
     @Autowired
-    private BizTxRepository bizTxRepository;
+    private CreateOrderTaskRepository createOrderTaskRepository;
+    @Autowired
+    private RecycleOrderTaskRepository recycleOrderTaskRepository;
+    @Autowired
+    private ReserveOrderTaskRepository reserveOrderTaskRepository;
+    @Autowired
+    private ConfirmOrderPaymentTaskRepository confirmOrderPaymentTaskRepository;
+    @Autowired
+    private ConcludeOrderTaskRepository concludeOrderTaskRepository;
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -123,13 +128,13 @@ public class CustomStateMachineBuilder {
                     .withExternal()
                     .source(BizOrderStatus.NOT_PAID_RESERVED).target(BizOrderStatus.PAID_RESERVED)
                     .event(BizOrderEvent.CONFIRM_PAYMENT)
-                    .guard(updatePaymentTx())
+                    .guard(confirmPaymentTx())
                     .action(concludeOrderTask())
                     .and()
                     .withExternal()
                     .source(BizOrderStatus.NOT_PAID_RECYCLED).target(BizOrderStatus.PAID_RECYCLED)
                     .event(BizOrderEvent.CONFIRM_PAYMENT)
-                    .guard(updatePaymentTx())
+                    .guard(confirmPaymentTx())
                     .and()
                     .withInternal()
                     .source(BizOrderStatus.NOT_PAID_RECYCLED)
@@ -188,13 +193,10 @@ public class CustomStateMachineBuilder {
         return context -> {
             CreateBizStateMachineCommand machineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
             log.info("start of recycle order with id {}", machineCommand.getOrderId());
-            CreatedAggregateRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedAggregateRep.class);
-            AppBizTxRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
-            if (appBizTaskRep == null) return false;
-
+            RecycleOrderTask task = context.getExtendedState().get(TX_TASK, RecycleOrderTask.class);
             // increase order storage
             CompletableFuture<Void> increaseOrderStorageFuture = CompletableFuture.runAsync(() ->
-                    productService.updateProductStorage(productService.getReserveOrderPatchCommands(machineCommand.getProductList()), appBizTaskRep.getTransactionId()), customExecutor
+                    productService.updateProductStorage(productService.getReserveOrderPatchCommands(machineCommand.getProductList()), task.getTaskId()), customExecutor
             );
 
             // update order
@@ -205,7 +207,9 @@ public class CustomStateMachineBuilder {
             List<RuntimeException> exs = new ArrayList<>();
             try {
                 increaseOrderStorageFuture.get();
+                task.setIncreaseOrderStorageSubTaskStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
+                log.error("error during recycle order storage", e);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -217,7 +221,9 @@ public class CustomStateMachineBuilder {
 
             try {
                 updateOrderFuture.get();
+                task.setUpdateOrderSubTaskStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
+                log.error("error during update order status", e);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -227,15 +233,44 @@ public class CustomStateMachineBuilder {
                 }
             }
             log.info("end of recycle order with id {}", machineCommand.getOrderId());
-            return checkResult(context, exs, appBizTaskRep);
+            if (exs.size() > 0) {
+                markRecycleTaskAs(context, TaskStatus.FAILED);
+                if (exs.size() > 1) {
+                    context.getStateMachine().setStateMachineError(new MultipleStateMachineException(exs));
+                } else {
+                    context.getStateMachine().setStateMachineError(exs.get(0));
+                }
+                return false;
+            }
+            markRecycleTaskAs(context, TaskStatus.COMPLETED);
+            return true;
         };
     }
 
     private Action<BizOrderStatus, BizOrderEvent> prepareTaskFor(BizOrderEvent event) {
         return context -> {
-            log.info("start of save task to database");
             long id = idGenerator.getId();
             if (event.equals(BizOrderEvent.NEW_ORDER)) {
+                log.info("start of save create order task");
+                try {
+                    new TransactionTemplate(transactionManager)
+                            .execute(new TransactionCallbackWithoutResult() {
+                                @Override
+                                protected void doInTransactionWithoutResult(TransactionStatus status) {
+                                    // read task again make sure it's still valid & apply opt lock
+
+                                    CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
+                                    CreateOrderTask bizTx = CreateOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId());
+                                    createOrderTaskRepository.save(bizTx);
+                                    context.getExtendedState().getVariables().put(TX_TASK, bizTx);
+                                }
+                            });
+                } catch (Exception e) {
+                    context.getStateMachine().setStateMachineError(new BizTxPersistenceException(e));
+                }
+                log.info("end of save create order task");
+            } else if (event.equals(BizOrderEvent.RECYCLE_ORDER_STORAGE)) {
+                log.info("start of save recycle order task");
                 try {
                     new TransactionTemplate(transactionManager)
                             .execute(new TransactionCallbackWithoutResult() {
@@ -243,22 +278,70 @@ public class CustomStateMachineBuilder {
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
                                     CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-                                    String s = "unable to convert";
-                                    try {
-                                        s = objectMapper.writeValueAsString(customerOrder);
-                                    } catch (JsonProcessingException e) {
-                                        log.error("unable to convert object");
-                                    }
-                                    CreateOrderBizTx bizTx = CreateOrderBizTx.createTx(id, s, customerOrder.getTxId());
-                                    bizTxRepository.save(bizTx);
-                                    context.getExtendedState().getVariables().put(TX_TASK, bizTx);
+                                    RecycleOrderTask task = RecycleOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId());
+                                    recycleOrderTaskRepository.save(task);
+                                    context.getExtendedState().getVariables().put(TX_TASK, task);
                                 }
                             });
                 } catch (Exception e) {
                     context.getStateMachine().setStateMachineError(new BizTxPersistenceException(e));
                 }
+                log.info("end of save recycle order task");
+            } else if (event.equals(BizOrderEvent.RESERVE)) {
+                log.info("start of save reserve order task");
+                try {
+                    new TransactionTemplate(transactionManager)
+                            .execute(new TransactionCallbackWithoutResult() {
+                                @Override
+                                protected void doInTransactionWithoutResult(TransactionStatus status) {
+                                    // read task again make sure it's still valid & apply opt lock
+                                    CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
+                                    ReserveOrderTask task = ReserveOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId());
+                                    reserveOrderTaskRepository.save(task);
+                                    context.getExtendedState().getVariables().put(TX_TASK, task);
+                                }
+                            });
+                } catch (Exception e) {
+                    context.getStateMachine().setStateMachineError(new BizTxPersistenceException(e));
+                }
+                log.info("end of save reserve order task");
+            } else if (event.equals(BizOrderEvent.CONFIRM_PAYMENT)) {
+                log.info("start of save confirm payment order task");
+                try {
+                    new TransactionTemplate(transactionManager)
+                            .execute(new TransactionCallbackWithoutResult() {
+                                @Override
+                                protected void doInTransactionWithoutResult(TransactionStatus status) {
+                                    // read task again make sure it's still valid & apply opt lock
+                                    CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
+                                    ConfirmOrderPaymentTask task = ConfirmOrderPaymentTask.createTask(id, getCommandAsString(context), customerOrder.getTxId());
+                                    confirmOrderPaymentTaskRepository.save(task);
+                                    context.getExtendedState().getVariables().put(TX_TASK, task);
+                                }
+                            });
+                } catch (Exception e) {
+                    context.getStateMachine().setStateMachineError(new BizTxPersistenceException(e));
+                }
+                log.info("end of save confirm payment order task");
+            } else if (event.equals(BizOrderEvent.CONFIRM_ORDER)) {
+                log.info("start of save confirm payment order task");
+                try {
+                    new TransactionTemplate(transactionManager)
+                            .execute(new TransactionCallbackWithoutResult() {
+                                @Override
+                                protected void doInTransactionWithoutResult(TransactionStatus status) {
+                                    // read task again make sure it's still valid & apply opt lock
+                                    CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
+                                    ConcludeOrderTask task = ConcludeOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId());
+                                    concludeOrderTaskRepository.save(task);
+                                    context.getExtendedState().getVariables().put(TX_TASK, task);
+                                }
+                            });
+                } catch (Exception e) {
+                    context.getStateMachine().setStateMachineError(new BizTxPersistenceException(e));
+                }
+                log.info("end of save confirm payment order task");
             }
-            log.info("end of save task to database");
         };
     }
 
@@ -280,7 +363,7 @@ public class CustomStateMachineBuilder {
     private Guard<BizOrderStatus, BizOrderEvent> createOrderTx() {
         return context -> {
             CreateBizStateMachineCommand command = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-            CreateOrderBizTx bizTx = context.getExtendedState().get(TX_TASK, CreateOrderBizTx.class);
+            CreateOrderTask bizTx = context.getExtendedState().get(TX_TASK, CreateOrderTask.class);
             List<RuntimeException> exs = new ArrayList<>();
             if (bizTx == null) return false;
             log.info("start of prepareNewOrder of {}", command.getOrderId());
@@ -310,9 +393,9 @@ public class CustomStateMachineBuilder {
             try {
                 paymentLink = paymentQRLinkFuture.get();
                 bizTx.getGeneratePaymentLinkTx().setResults(paymentLink);
-                bizTx.getGeneratePaymentLinkTx().setStatus(SubTxStatus.COMPLETED);
+                bizTx.getGeneratePaymentLinkTx().setStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
-                bizTx.getGeneratePaymentLinkTx().setStatus(SubTxStatus.FAILED);
+                bizTx.getGeneratePaymentLinkTx().setStatus(SubTaskStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -326,14 +409,14 @@ public class CustomStateMachineBuilder {
                 bizTx.getValidateOrderTx().setResult(aBoolean);
                 if (aBoolean.compareTo(Boolean.TRUE) == 0) {
                     bizTx.getValidateOrderTx().setResult(true);
-                    bizTx.getValidateOrderTx().setStatus(SubTxStatus.COMPLETED);
+                    bizTx.getValidateOrderTx().setStatus(SubTaskStatus.COMPLETED);
                 } else {
                     bizTx.getValidateOrderTx().setResult(false);
                     exs.add(new BizOrderInvalidException());
-                    bizTx.getValidateOrderTx().setStatus(SubTxStatus.FAILED);
+                    bizTx.getValidateOrderTx().setStatus(SubTaskStatus.FAILED);
                 }
             } catch (InterruptedException | ExecutionException e) {
-                bizTx.getValidateOrderTx().setStatus(SubTxStatus.FAILED);
+                bizTx.getValidateOrderTx().setStatus(SubTaskStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -344,9 +427,9 @@ public class CustomStateMachineBuilder {
             }
             try {
                 decreaseOrderStorageFuture.get();
-                bizTx.setDecreaseOrderStorageTxStatus(SubTxStatus.COMPLETED);
+                bizTx.setDecreaseOrderStorageTxStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
-                bizTx.setDecreaseOrderStorageTxStatus(SubTxStatus.FAILED);
+                bizTx.setDecreaseOrderStorageTxStatus(SubTaskStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -357,9 +440,9 @@ public class CustomStateMachineBuilder {
             }
             try {
                 clearCartFuture.get();
-                bizTx.setRemoveItemsFromCartStatus(SubTxStatus.COMPLETED);
+                bizTx.setRemoveItemsFromCartStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
-                bizTx.setRemoveItemsFromCartStatus(SubTxStatus.FAILED);
+                bizTx.setRemoveItemsFromCartStatus(SubTaskStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -371,7 +454,7 @@ public class CustomStateMachineBuilder {
 
 
             if (exs.size() > 0) {
-                markTaskAsFailed(context);
+                markCreateTaskAs(context, TaskStatus.FAILED);
                 if (exs.size() > 1) {
                     context.getStateMachine().setStateMachineError(new MultipleStateMachineException(exs));
                 } else {
@@ -387,66 +470,40 @@ public class CustomStateMachineBuilder {
             );
             try {
                 updateOrderFuture.get();
-                bizTx.getCreateOrderTx().setStatus(SubTxStatus.COMPLETED);
+                bizTx.getCreateOrderTx().setStatus(SubTaskStatus.COMPLETED);
             } catch (ExecutionException ex) {
-                bizTx.getCreateOrderTx().setStatus(SubTxStatus.FAILED);
-                markTaskAsFailed(context);
+                bizTx.getCreateOrderTx().setStatus(SubTaskStatus.FAILED);
+                markCreateTaskAs(context, TaskStatus.FAILED);
                 if (updateOrderFuture.isCompletedExceptionally())
                     context.getStateMachine().setStateMachineError(new BizOrderUpdateException(ex));
                 return false;
             } catch (InterruptedException e) {
-                bizTx.getCreateOrderTx().setStatus(SubTxStatus.FAILED);
-                markTaskAsFailed(context);
+                bizTx.getCreateOrderTx().setStatus(SubTaskStatus.FAILED);
+                markCreateTaskAs(context, TaskStatus.FAILED);
                 log.warn("thread was interrupted", e);
                 context.getStateMachine().setStateMachineError(e);
                 Thread.currentThread().interrupt();
                 return false;
             }
-            markTaskAs(context, TxStatus.COMPLETED);
+            markCreateTaskAs(context, TaskStatus.COMPLETED);
             return true;
         };
-    }
-
-    private void markTaskAsFailed(StateContext<BizOrderStatus, BizOrderEvent> context) {
-        markTaskAs(context, TxStatus.FAILED);
-    }
-
-    private void markTaskAs(StateContext<BizOrderStatus, BizOrderEvent> context, TxStatus txStatus) {
-        log.info("mark task as {}", txStatus);
-        CreateOrderBizTx o = (CreateOrderBizTx) context.getExtendedState().getVariables().get(TX_TASK);
-        o.setTxStatus(txStatus);
-        bizTxRepository.save(o);
-    }
-
-    @Nullable
-    private AppBizTxRep getAppBizTaskRep(StateContext<BizOrderStatus, BizOrderEvent> context, CreatedAggregateRep transactionalTask) {
-        AppBizTxRep appBizTaskRep;
-        try {
-            log.info("read saved task");
-            appBizTaskRep = appBizTaskApplicationService.readById(transactionalTask.getId());
-        } catch (AggregateNotExistException ex) {
-            context.getStateMachine().setStateMachineError(ex);
-            return null;
-        }
-        return appBizTaskRep;
     }
 
     private Guard<BizOrderStatus, BizOrderEvent> reserveOrderTx() {
         return context -> {
             log.info("start of reserveOrderTx");
             CreateBizStateMachineCommand stateMachineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-            CreatedAggregateRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedAggregateRep.class);
-            AppBizTxRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
-            if (appBizTaskRep == null) return false;
+            ReserveOrderTask task = context.getExtendedState().get(TX_TASK, ReserveOrderTask.class);
 
             // decrease order storage
             CompletableFuture<Void> decreaseOrderStorageFuture = CompletableFuture.runAsync(() ->
-                    productService.updateProductStorage(productService.getReserveOrderPatchCommands(stateMachineCommand.getProductList()), appBizTaskRep.getTransactionId()), customExecutor
+                    productService.updateProductStorage(productService.getReserveOrderPatchCommands(stateMachineCommand.getProductList()), task.getTaskId()), customExecutor
             );
 
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.saveReservedOrder(stateMachineCommand), customExecutor
+                    orderService.reservedOrder(stateMachineCommand), customExecutor
             );
 
             List<RuntimeException> exs = new ArrayList<>();
@@ -473,8 +530,17 @@ public class CustomStateMachineBuilder {
                     exs.add(new BizOrderUpdateException(e));
                 }
             }
-
-            return checkResult(context, exs, appBizTaskRep);
+            if (exs.size() > 0) {
+                if (exs.size() > 1) {
+                    context.getStateMachine().setStateMachineError(new MultipleStateMachineException(exs));
+                } else {
+                    context.getStateMachine().setStateMachineError(exs.get(0));
+                }
+                markReserveTaskAs(context, TaskStatus.FAILED);
+                return false;
+            }
+            markReserveTaskAs(context, TaskStatus.COMPLETED);
+            return true;
         };
     }
 
@@ -485,16 +551,25 @@ public class CustomStateMachineBuilder {
         };
     }
 
+    private String getCommandAsString(StateContext<BizOrderStatus, BizOrderEvent> context) {
+        CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
+        String s = "unable to convert";
+        try {
+            s = objectMapper.writeValueAsString(customerOrder);
+        } catch (JsonProcessingException e) {
+            log.error("unable to convert object");
+        }
+        return s;
+    }
+
     private Guard<BizOrderStatus, BizOrderEvent> confirmOrderTx() {
         return context -> {
             CreateBizStateMachineCommand machineCommand = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-            CreatedAggregateRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedAggregateRep.class);
-            AppBizTxRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
-            if (appBizTaskRep == null) return false;
+            ConcludeOrderTask task = context.getExtendedState().get(TX_TASK, ConcludeOrderTask.class);
             log.info("start of decreaseActualStorage for {}", machineCommand.getOrderId());
             // decrease actual storage
             CompletableFuture<Void> decreaseActualStorageFuture = CompletableFuture.runAsync(() ->
-                    productService.updateProductStorage(productService.getConfirmOrderPatchCommands(machineCommand.getProductList()), appBizTaskRep.getTransactionId()), customExecutor
+                    productService.updateProductStorage(productService.getConfirmOrderPatchCommands(machineCommand.getProductList()), task.getTaskId()), customExecutor
             );
 
             // update order
@@ -526,18 +601,25 @@ public class CustomStateMachineBuilder {
                     exs.add(new BizOrderUpdateException(e));
                 }
             }
-
-            return checkResult(context, exs, appBizTaskRep);
+            if (exs.size() > 0) {
+                if (exs.size() > 1) {
+                    context.getStateMachine().setStateMachineError(new MultipleStateMachineException(exs));
+                } else {
+                    context.getStateMachine().setStateMachineError(exs.get(0));
+                }
+                markConcludeOrderTaskAs(context,TaskStatus.FAILED);
+                return false;
+            }
+            markConcludeOrderTaskAs(context,TaskStatus.COMPLETED);
+            return true;
         };
     }
 
-    private Guard<BizOrderStatus, BizOrderEvent> updatePaymentTx() {
+    private Guard<BizOrderStatus, BizOrderEvent> confirmPaymentTx() {
         return context -> {
             log.info("start of updatePaymentStatus");
             CreateBizStateMachineCommand bizOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-            CreatedAggregateRep transactionalTask = context.getExtendedState().get(TX_TASK, CreatedAggregateRep.class);
-            AppBizTxRep appBizTaskRep = getAppBizTaskRep(context, transactionalTask);
-            if (appBizTaskRep == null) return false;
+            ConfirmOrderPaymentTask task = context.getExtendedState().get(TX_TASK, ConfirmOrderPaymentTask.class);
 
             // confirm payment
             CompletableFuture<Boolean> confirmPaymentFuture = CompletableFuture.supplyAsync(() ->
@@ -566,6 +648,7 @@ public class CustomStateMachineBuilder {
 
             try {
                 updateOrderFuture.get();
+                task.setUpdateOrderSubTaskStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
@@ -575,23 +658,53 @@ public class CustomStateMachineBuilder {
                     exs.add(new BizOrderUpdateException(e));
                 }
             }
-
-            return checkResult(context, exs, appBizTaskRep);
+            if (exs.size() > 0) {
+                if (exs.size() > 1) {
+                    context.getStateMachine().setStateMachineError(new MultipleStateMachineException(exs));
+                } else {
+                    context.getStateMachine().setStateMachineError(exs.get(0));
+                }
+                markConfirmPaymentTaskAs(context, TaskStatus.FAILED);
+                return false;
+            }
+            markConfirmPaymentTaskAs(context, TaskStatus.COMPLETED);
+            return true;
         };
     }
 
-    private boolean checkResult(StateContext<BizOrderStatus, BizOrderEvent> context, List<RuntimeException> exs, AppBizTxRep appBizTxRep) {
-        markTaskAsFailed(context);
-        if (exs.size() > 0) {
-            if (exs.size() > 1) {
-                context.getStateMachine().setStateMachineError(new MultipleStateMachineException(exs));
-            } else {
-                context.getStateMachine().setStateMachineError(exs.get(0));
-            }
-            return false;
-        }
-        return true;
+
+    private void markCreateTaskAs(StateContext<BizOrderStatus, BizOrderEvent> context, TaskStatus txStatus) {
+        log.info("mark task as {}", txStatus);
+        CreateOrderTask o = (CreateOrderTask) context.getExtendedState().getVariables().get(TX_TASK);
+        o.setTxStatus(txStatus);
+        createOrderTaskRepository.save(o);
     }
 
+    private void markRecycleTaskAs(StateContext<BizOrderStatus, BizOrderEvent> context, TaskStatus txStatus) {
+        log.info("mark task as {}", txStatus);
+        RecycleOrderTask o = (RecycleOrderTask) context.getExtendedState().getVariables().get(TX_TASK);
+        o.setTaskStatus(txStatus);
+        recycleOrderTaskRepository.save(o);
+    }
+
+    private void markReserveTaskAs(StateContext<BizOrderStatus, BizOrderEvent> context, TaskStatus txStatus) {
+        log.info("mark task as {}", txStatus);
+        ReserveOrderTask o = (ReserveOrderTask) context.getExtendedState().getVariables().get(TX_TASK);
+        o.setTaskStatus(txStatus);
+        reserveOrderTaskRepository.save(o);
+    }
+
+    private void markConfirmPaymentTaskAs(StateContext<BizOrderStatus, BizOrderEvent> context, TaskStatus txStatus) {
+        log.info("mark task as {}", txStatus);
+        ConfirmOrderPaymentTask o = (ConfirmOrderPaymentTask) context.getExtendedState().getVariables().get(TX_TASK);
+        o.setTaskStatus(txStatus);
+        confirmOrderPaymentTaskRepository.save(o);
+    }
+    private void markConcludeOrderTaskAs(StateContext<BizOrderStatus, BizOrderEvent> context, TaskStatus txStatus) {
+        log.info("mark task as {}", txStatus);
+        ConcludeOrderTask o = (ConcludeOrderTask) context.getExtendedState().getVariables().get(TX_TASK);
+        o.setTaskStatus(txStatus);
+        concludeOrderTaskRepository.save(o);
+    }
 
 }

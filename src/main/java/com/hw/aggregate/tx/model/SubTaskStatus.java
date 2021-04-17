@@ -2,16 +2,16 @@ package com.hw.aggregate.tx.model;
 
 import com.hw.shared.EnumDBConverter;
 
-public enum SubTxStatus {
+public enum SubTaskStatus {
     STARTED,
     COMPLETED,
     CANCELLED,
     TIMEOUT,
     FAILED;
 
-    public static class DBConverter extends EnumDBConverter<SubTxStatus> {
+    public static class DBConverter extends EnumDBConverter<SubTaskStatus> {
         public DBConverter() {
-            super(SubTxStatus.class);
+            super(SubTaskStatus.class);
         }
     }
 }

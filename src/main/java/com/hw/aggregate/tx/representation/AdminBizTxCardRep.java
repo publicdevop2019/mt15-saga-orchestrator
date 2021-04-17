@@ -1,16 +1,16 @@
 package com.hw.aggregate.tx.representation;
 
-import com.hw.aggregate.tx.model.CreateOrderBizTx;
-import com.hw.aggregate.tx.model.TxName;
-import com.hw.aggregate.tx.model.TxStatus;
+import com.hw.aggregate.tx.model.CreateOrderTask;
+import com.hw.aggregate.tx.model.TaskName;
+import com.hw.aggregate.tx.model.TaskStatus;
 import lombok.Data;
 import org.springframework.beans.BeanUtils;
 
 @Data
 public class AdminBizTxCardRep {
     private Long id;
-    private TxName taskName;
-    private TxStatus taskStatus;
+    private TaskName taskName;
+    private TaskStatus taskStatus;
     private String transactionId;
     private Long referenceId;
     private String rollbackReason;
@@ -20,7 +20,7 @@ public class AdminBizTxCardRep {
     private String modifiedBy;
     private long modifiedAt;
 
-    public AdminBizTxCardRep(CreateOrderBizTx bizTask) {
+    public AdminBizTxCardRep(CreateOrderTask bizTask) {
         BeanUtils.copyProperties(bizTask, this);
         this.taskName = bizTask.getTxName();
         this.taskStatus = bizTask.getTxStatus();

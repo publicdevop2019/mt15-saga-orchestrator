@@ -8,13 +8,13 @@ import javax.persistence.Convert;
 
 @Setter
 @Getter
-public class GeneratePaymentLinkTx {
+public class GeneratePaymentLinkSubTask {
     @Column(name = "generatePaymentLinkStatus")
-    @Convert(converter = SubTxStatus.DBConverter.class)
-    private SubTxStatus status = SubTxStatus.STARTED;
+    @Convert(converter = SubTaskStatus.DBConverter.class)
+    private SubTaskStatus status = SubTaskStatus.STARTED;
     @Column(name = "generatePaymentLinkResults")
     private String results;
 
-    public GeneratePaymentLinkTx() {
+    public GeneratePaymentLinkSubTask() {
     }
 }

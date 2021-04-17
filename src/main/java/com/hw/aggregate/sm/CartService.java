@@ -61,7 +61,7 @@ public class CartService {
         headers.set(HTTP_HEADER_CHANGE_ID, changeId);
         HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
         String applicationUrl = eurekaHelper.getApplicationUrl(appName);
-        ResponseEntity<SumPagedRep> exchange = restTemplate.exchange(applicationUrl + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + "changeId:" + changeId, HttpMethod.GET, hashMapHttpEntity, SumPagedRep.class);
+        ResponseEntity<SumPagedRep> exchange = restTemplate.exchange(applicationUrl + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + "entityType:BizCart,changeId:" + changeId, HttpMethod.GET, hashMapHttpEntity, SumPagedRep.class);
         return exchange.getBody().getData().size() == 1;
     }
 }
