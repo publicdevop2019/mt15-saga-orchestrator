@@ -21,6 +21,7 @@ public class CartDetail implements Serializable {
 
     private String productId;
     private String skuId;
+    private Integer amount;
     private String cartId;
     private Set<String> attributesSales;
 

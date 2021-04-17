@@ -4,10 +4,10 @@ import com.hw.shared.sql.RestfulQueryRegistry;
 import org.springframework.stereotype.Component;
 
 @Component
-public class BizTxQueryRegistry extends RestfulQueryRegistry<BizTx> {
+public class BizTxQueryRegistry extends RestfulQueryRegistry<CreateOrderBizTx> {
 
     @Override
-    public Class<BizTx> getEntityClass() {
-        return BizTx.class;
+    public Class<CreateOrderBizTx> getEntityClass() {
+        return CreateOrderBizTx.class;
     }
 }

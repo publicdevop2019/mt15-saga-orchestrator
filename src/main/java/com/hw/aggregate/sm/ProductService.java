@@ -5,7 +5,9 @@ import com.hw.aggregate.sm.model.order.BizOrderItemAddOnSelection;
 import com.hw.aggregate.sm.model.order.CartDetail;
 import com.hw.aggregate.sm.model.product.ProductsSummary;
 import com.hw.config.EurekaHelper;
+import com.hw.shared.idempotent.exception.RollbackNotSupportedException;
 import com.hw.shared.sql.PatchCommand;
+import com.hw.shared.sql.SumPagedRep;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,7 +29,9 @@ import static com.hw.shared.AppConstant.*;
 @Slf4j
 public class ProductService {
 
-    @Value("${mt.url.mall.product}")
+    @Value("${mt.url.mall.skus}")
+    private String skusUrl;
+    @Value("${mt.url.mall.products}")
     private String productUrl;
 
     @Value("${mt.url.mall.change}")
@@ -48,11 +52,18 @@ public class ProductService {
         headers.add(HTTP_HEADER_CHANGE_ID, txId);
         HttpEntity<List<PatchCommand>> hashMapHttpEntity = new HttpEntity<>(changeList, headers);
         String applicationUrl = eurekaHelper.getApplicationUrl(appName);
-        restTemplate.exchange(applicationUrl + productUrl, HttpMethod.PATCH, hashMapHttpEntity, String.class);
+        restTemplate.exchange(applicationUrl + skusUrl, HttpMethod.PATCH, hashMapHttpEntity, String.class);
         log.info("complete updateProductStorage");
     }
 
+    public void cancelUpdateProductStorage(List<PatchCommand> originalChange, String cancelTxId, String txId) {
+        if (hasChange(txId)) {
+            updateProductStorage(buildRollbackCommand(originalChange), cancelTxId);
+        }
+    }
+
     public boolean validateOrderedProduct(List<CartDetail> customerOrderItemList) {
+        log.info("start of validate order");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<List<CartDetail>> hashMapHttpEntity = new HttpEntity<>(customerOrderItemList, headers);
@@ -63,7 +74,9 @@ public class ProductService {
 
         ResponseEntity<ProductsSummary> exchange = restTemplate.exchange(applicationUrl + productUrl + query, HttpMethod.GET, hashMapHttpEntity, ProductsSummary.class);
         ProductsSummary body = exchange.getBody();
-        return validateProducts(body,customerOrderItemList);
+        boolean b = validateProducts(body, customerOrderItemList);
+        log.info("end of validate order, result is {}", b);
+        return b;
     }
 
     private String getQuery(List<String> ids) {
@@ -130,8 +143,7 @@ public class ProductService {
     }
 
     private String getPatchPath(CartDetail e, String fieldName) {
-        String replace = String.join(",", e.getAttributesSales()).replace(":", "-").replace("/", "~/");
-        return "/" + e.getProductId() + "/skus?query=attributesSales:" + replace + "/" + fieldName;
+        return "/" + e.getSkuId() + "/" + fieldName;
     }
 
     public boolean validateProducts(ProductsSummary productsSummary, List<CartDetail> orderItems) {
@@ -215,5 +227,28 @@ public class ProductService {
             }
             return true;
         });
+    }
+
+    private List<PatchCommand> buildRollbackCommand(List<PatchCommand> deepCopy) {
+        deepCopy.forEach(e -> {
+            if (e.getOp().equalsIgnoreCase(PATCH_OP_TYPE_SUM)) {
+                e.setOp(PATCH_OP_TYPE_DIFF);
+            } else if (e.getOp().equalsIgnoreCase(PATCH_OP_TYPE_DIFF)) {
+                e.setOp(PATCH_OP_TYPE_SUM);
+            } else {
+                throw new RollbackNotSupportedException();
+            }
+        });
+        return deepCopy;
+    }
+
+    public boolean hasChange(String changeId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set(HTTP_HEADER_CHANGE_ID, changeId);
+        HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
+        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
+        ResponseEntity<SumPagedRep> exchange = restTemplate.exchange(applicationUrl + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + "changeId:" + changeId, HttpMethod.GET, hashMapHttpEntity, SumPagedRep.class);
+        return exchange.getBody().getData().size() == 1;
     }
 }

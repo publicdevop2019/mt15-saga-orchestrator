@@ -1,6 +1,6 @@
 package com.hw.aggregate.tx;
 
-import com.hw.aggregate.tx.model.BizTx;
+import com.hw.aggregate.tx.model.CreateOrderBizTx;
 import com.hw.aggregate.tx.representation.AppBizTxRep;
 import com.hw.shared.rest.CreatedAggregateRep;
 import com.hw.shared.rest.RoleBasedRestfulService;
@@ -13,9 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
-public class AppBizTxApplicationService extends RoleBasedRestfulService<BizTx, Void, AppBizTxRep, VoidTypedClass> {
+public class AppBizTxApplicationService extends RoleBasedRestfulService<CreateOrderBizTx, Void, AppBizTxRep, VoidTypedClass> {
     {
-        entityClass = BizTx.class;
+        entityClass = CreateOrderBizTx.class;
         role = RestfulQueryRegistry.RoleEnum.APP;
         rollbackSupported = false;
     }
@@ -34,7 +34,7 @@ public class AppBizTxApplicationService extends RoleBasedRestfulService<BizTx, V
     }
 
     @Override
-    public AppBizTxRep getEntityRepresentation(BizTx bizTask) {
+    public AppBizTxRep getEntityRepresentation(CreateOrderBizTx bizTask) {
         return new AppBizTxRep(bizTask);
     }
 

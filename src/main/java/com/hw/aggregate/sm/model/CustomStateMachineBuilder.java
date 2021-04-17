@@ -11,7 +11,8 @@ import com.hw.aggregate.sm.model.order.CartDetail;
 import com.hw.aggregate.tx.AppBizTxApplicationService;
 import com.hw.aggregate.tx.BizTxRepository;
 import com.hw.aggregate.tx.exception.BizTxPersistenceException;
-import com.hw.aggregate.tx.model.BizTx;
+import com.hw.aggregate.tx.model.CreateOrderBizTx;
+import com.hw.aggregate.tx.model.SubTxStatus;
 import com.hw.aggregate.tx.model.TxStatus;
 import com.hw.aggregate.tx.representation.AppBizTxRep;
 import com.hw.shared.IdGenerator;
@@ -198,7 +199,7 @@ public class CustomStateMachineBuilder {
 
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.saveRecycleOrder(machineCommand), customExecutor
+                    orderService.recycleOrder(machineCommand), customExecutor
             );
 
             List<RuntimeException> exs = new ArrayList<>();
@@ -248,7 +249,7 @@ public class CustomStateMachineBuilder {
                                     } catch (JsonProcessingException e) {
                                         log.error("unable to convert object");
                                     }
-                                    BizTx bizTx = BizTx.createTx(id, s, customerOrder.getTxId());
+                                    CreateOrderBizTx bizTx = CreateOrderBizTx.createTx(id, s, customerOrder.getTxId());
                                     bizTxRepository.save(bizTx);
                                     context.getExtendedState().getVariables().put(TX_TASK, bizTx);
                                 }
@@ -279,9 +280,9 @@ public class CustomStateMachineBuilder {
     private Guard<BizOrderStatus, BizOrderEvent> createOrderTx() {
         return context -> {
             CreateBizStateMachineCommand command = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-            BizTx appBizTxRep = context.getExtendedState().get(TX_TASK, BizTx.class);
+            CreateOrderBizTx bizTx = context.getExtendedState().get(TX_TASK, CreateOrderBizTx.class);
             List<RuntimeException> exs = new ArrayList<>();
-            if (appBizTxRep == null) return false;
+            if (bizTx == null) return false;
             log.info("start of prepareNewOrder of {}", command.getOrderId());
             // validate product info
             CompletableFuture<Boolean> validateResultFuture = CompletableFuture.supplyAsync(() ->
@@ -290,25 +291,28 @@ public class CustomStateMachineBuilder {
 
             // generate payment QR link
             CompletableFuture<String> paymentQRLinkFuture = CompletableFuture.supplyAsync(() ->
-                    paymentService.generatePaymentLink(command.getOrderId(), appBizTxRep.getTxId()), customExecutor
+                    paymentService.generatePaymentLink(command.getOrderId(), bizTx.getTxId()), customExecutor
             );
 
             // decrease order storage
             CompletableFuture<Void> decreaseOrderStorageFuture = CompletableFuture.runAsync(() ->
-                    productService.updateProductStorage(productService.getReserveOrderPatchCommands(command.getProductList()), appBizTxRep.getTxId()), customExecutor
+                    productService.updateProductStorage(productService.getReserveOrderPatchCommands(command.getProductList()), bizTx.getTxId()), customExecutor
             );
 
             // clear cart
             CompletableFuture<Void> clearCartFuture = CompletableFuture.runAsync(() -> {
                         Set<String> collect = command.getProductList().stream().map(CartDetail::getCartId).collect(Collectors.toSet());
-                        cartService.clearCart(command.getUserId(), collect, appBizTxRep.getTxId());
+                        cartService.clearCart(command.getUserId(), collect, bizTx.getTxId());
                     }, customExecutor
             );
 
             String paymentLink = null;
             try {
                 paymentLink = paymentQRLinkFuture.get();
+                bizTx.getGeneratePaymentLinkTx().setResults(paymentLink);
+                bizTx.getGeneratePaymentLinkTx().setStatus(SubTxStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
+                bizTx.getGeneratePaymentLinkTx().setStatus(SubTxStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -319,11 +323,17 @@ public class CustomStateMachineBuilder {
             }
             try {
                 Boolean aBoolean = validateResultFuture.get();
-                appBizTxRep.getValidateOrderTx().setResult(aBoolean);
-                if (aBoolean.compareTo(Boolean.FALSE) == 0) {
+                bizTx.getValidateOrderTx().setResult(aBoolean);
+                if (aBoolean.compareTo(Boolean.TRUE) == 0) {
+                    bizTx.getValidateOrderTx().setResult(true);
+                    bizTx.getValidateOrderTx().setStatus(SubTxStatus.COMPLETED);
+                } else {
+                    bizTx.getValidateOrderTx().setResult(false);
                     exs.add(new BizOrderInvalidException());
+                    bizTx.getValidateOrderTx().setStatus(SubTxStatus.FAILED);
                 }
             } catch (InterruptedException | ExecutionException e) {
+                bizTx.getValidateOrderTx().setStatus(SubTxStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -334,7 +344,9 @@ public class CustomStateMachineBuilder {
             }
             try {
                 decreaseOrderStorageFuture.get();
+                bizTx.setDecreaseOrderStorageTxStatus(SubTxStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
+                bizTx.setDecreaseOrderStorageTxStatus(SubTxStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -345,7 +357,9 @@ public class CustomStateMachineBuilder {
             }
             try {
                 clearCartFuture.get();
+                bizTx.setRemoveItemsFromCartStatus(SubTxStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
+                bizTx.setRemoveItemsFromCartStatus(SubTxStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -369,16 +383,19 @@ public class CustomStateMachineBuilder {
             // update order
             String finalPaymentLink = paymentLink;
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.saveNewOrder(finalPaymentLink, command), customExecutor
+                    orderService.createNewOrder(finalPaymentLink, command), customExecutor
             );
             try {
                 updateOrderFuture.get();
+                bizTx.getCreateOrderTx().setStatus(SubTxStatus.COMPLETED);
             } catch (ExecutionException ex) {
+                bizTx.getCreateOrderTx().setStatus(SubTxStatus.FAILED);
                 markTaskAsFailed(context);
                 if (updateOrderFuture.isCompletedExceptionally())
                     context.getStateMachine().setStateMachineError(new BizOrderUpdateException(ex));
                 return false;
             } catch (InterruptedException e) {
+                bizTx.getCreateOrderTx().setStatus(SubTxStatus.FAILED);
                 markTaskAsFailed(context);
                 log.warn("thread was interrupted", e);
                 context.getStateMachine().setStateMachineError(e);
@@ -396,7 +413,7 @@ public class CustomStateMachineBuilder {
 
     private void markTaskAs(StateContext<BizOrderStatus, BizOrderEvent> context, TxStatus txStatus) {
         log.info("mark task as {}", txStatus);
-        BizTx o = (BizTx) context.getExtendedState().getVariables().get(TX_TASK);
+        CreateOrderBizTx o = (CreateOrderBizTx) context.getExtendedState().getVariables().get(TX_TASK);
         o.setTxStatus(txStatus);
         bizTxRepository.save(o);
     }
@@ -482,7 +499,7 @@ public class CustomStateMachineBuilder {
 
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.saveConcludeOrder(machineCommand), customExecutor
+                    orderService.concludeOrder(machineCommand), customExecutor
             );
 
             List<RuntimeException> exs = new ArrayList<>();
@@ -529,7 +546,7 @@ public class CustomStateMachineBuilder {
 
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.savePaidOrder(bizOrder), customExecutor
+                    orderService.confirmPayment(bizOrder), customExecutor
             );
 
             List<RuntimeException> exs = new ArrayList<>();
