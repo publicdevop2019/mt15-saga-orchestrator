@@ -223,7 +223,7 @@ public class ProductService {
         });
     }
 
-    private List<PatchCommand> buildRollbackCommand(List<PatchCommand> deepCopy) {
+    public static List<PatchCommand> buildRollbackCommand(List<PatchCommand> deepCopy) {
         deepCopy.forEach(e -> {
             if (e.getOp().equalsIgnoreCase(PATCH_OP_TYPE_SUM)) {
                 e.setOp(PATCH_OP_TYPE_DIFF);

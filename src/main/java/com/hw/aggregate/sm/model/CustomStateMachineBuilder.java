@@ -11,16 +11,13 @@ import com.hw.aggregate.sm.model.order.CartDetail;
 import com.hw.aggregate.tx.*;
 import com.hw.aggregate.tx.exception.BizTxPersistenceException;
 import com.hw.aggregate.tx.model.*;
-import com.hw.aggregate.tx.representation.AppBizTxRep;
 import com.hw.shared.IdGenerator;
-import com.hw.shared.rest.CreatedAggregateRep;
-import com.hw.shared.rest.exception.AggregateNotExistException;
+import com.hw.shared.sql.PatchCommand;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
-import org.springframework.lang.Nullable;
 import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.action.Action;
@@ -125,6 +122,11 @@ public class CustomStateMachineBuilder {
                     .event(BizOrderEvent.PREPARE_CONFIRM_PAYMENT)
                     .action(prepareTaskFor(BizOrderEvent.CONFIRM_PAYMENT))
                     .and()
+                    .withInternal()
+                    .source(BizOrderStatus.NOT_PAID_RECYCLED)
+                    .event(BizOrderEvent.PREPARE_CONFIRM_PAYMENT)
+                    .action(prepareTaskFor(BizOrderEvent.CONFIRM_PAYMENT))
+                    .and()
                     .withExternal()
                     .source(BizOrderStatus.NOT_PAID_RESERVED).target(BizOrderStatus.PAID_RESERVED)
                     .event(BizOrderEvent.CONFIRM_PAYMENT)
@@ -195,8 +197,10 @@ public class CustomStateMachineBuilder {
             log.info("start of recycle order with id {}", machineCommand.getOrderId());
             RecycleOrderTask task = context.getExtendedState().get(TX_TASK, RecycleOrderTask.class);
             // increase order storage
-            CompletableFuture<Void> increaseOrderStorageFuture = CompletableFuture.runAsync(() ->
-                    productService.updateProductStorage(productService.getReserveOrderPatchCommands(machineCommand.getProductList()), task.getTaskId()), customExecutor
+            CompletableFuture<Void> increaseOrderStorageFuture = CompletableFuture.runAsync(() -> {
+                        List<PatchCommand> patchCommands = ProductService.buildRollbackCommand(productService.getReserveOrderPatchCommands(machineCommand.getProductList()));
+                        productService.updateProductStorage(patchCommands, task.getTaskId());
+                    }, customExecutor
             );
 
             // update order
@@ -509,6 +513,7 @@ public class CustomStateMachineBuilder {
             List<RuntimeException> exs = new ArrayList<>();
             try {
                 decreaseOrderStorageFuture.get();
+                task.setDecreaseOrderStorageSubTaskStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
@@ -521,6 +526,7 @@ public class CustomStateMachineBuilder {
 
             try {
                 updateOrderFuture.get();
+                task.setUpdateOrderSubTaskStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
@@ -607,10 +613,10 @@ public class CustomStateMachineBuilder {
                 } else {
                     context.getStateMachine().setStateMachineError(exs.get(0));
                 }
-                markConcludeOrderTaskAs(context,TaskStatus.FAILED);
+                markConcludeOrderTaskAs(context, TaskStatus.FAILED);
                 return false;
             }
-            markConcludeOrderTaskAs(context,TaskStatus.COMPLETED);
+            markConcludeOrderTaskAs(context, TaskStatus.COMPLETED);
             return true;
         };
     }
@@ -700,6 +706,7 @@ public class CustomStateMachineBuilder {
         o.setTaskStatus(txStatus);
         confirmOrderPaymentTaskRepository.save(o);
     }
+
     private void markConcludeOrderTaskAs(StateContext<BizOrderStatus, BizOrderEvent> context, TaskStatus txStatus) {
         log.info("mark task as {}", txStatus);
         ConcludeOrderTask o = (ConcludeOrderTask) context.getExtendedState().getVariables().get(TX_TASK);
