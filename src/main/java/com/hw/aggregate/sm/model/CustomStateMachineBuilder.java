@@ -586,6 +586,7 @@ public class CustomStateMachineBuilder {
             List<RuntimeException> exs = new ArrayList<>();
             try {
                 decreaseActualStorageFuture.get();
+                task.setDecreaseActualStorageSubTaskStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
@@ -598,6 +599,7 @@ public class CustomStateMachineBuilder {
 
             try {
                 updateOrderFuture.get();
+                task.setUpdateOrderSubTaskStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
@@ -642,6 +644,7 @@ public class CustomStateMachineBuilder {
                 if (!Boolean.TRUE.equals(confirmPaymentFuture.get())) {
                     exs.add(new PaymentConfirmationFailedException());
                 }
+
             } catch (InterruptedException | ExecutionException e) {
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);

@@ -107,7 +107,7 @@ public class ConfirmOrderPaymentTaskScheduler {
 
         // cancel order update
         CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                orderService.cancelConfirmPayment(command, bizTx.getCancelTaskId(), command.getTxId()), customExecutor
+                orderService.cancelUpdateOrder(command, bizTx.getCancelTaskId(), command.getTxId()), customExecutor
         );
 
         try {

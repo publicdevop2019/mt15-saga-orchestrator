@@ -111,7 +111,7 @@ public class ReserveOrderTaskScheduler {
 
         // cancel order update
         CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                orderService.cancelReservedOrder(command, bizTx.getCancelTaskId(), command.getTxId()), customExecutor
+                orderService.cancelUpdateOrder(command, bizTx.getCancelTaskId(), command.getTxId()), customExecutor
         );
 
         try {

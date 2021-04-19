@@ -2,8 +2,9 @@ package com.hw.aggregate.sm;
 
 import com.hw.aggregate.sm.command.CreateBizStateMachineCommand;
 import com.hw.aggregate.sm.model.order.AppCreateBizOrderCommand;
-import com.hw.aggregate.sm.model.order.AppUpdateBizOrderCommand;
 import com.hw.aggregate.sm.model.order.BizOrderStatus;
+import com.hw.aggregate.sm.model.order.CancelUpdateBizOrderCommand;
+import com.hw.aggregate.sm.model.order.UpdateBizOrderCommand;
 import com.hw.config.EurekaHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,17 +36,31 @@ public class OrderService {
     @Autowired
     private RestTemplate restTemplate;
 
-    public void concludeOrder(CreateBizStateMachineCommand machineCommand) {
-        updateOrder(machineCommand, AppUpdateBizOrderCommand.CommandType.CONCLUDE);
+    public void concludeOrder(CreateBizStateMachineCommand command) {
+        UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
+        updateBizOrderCommand.setActualStorage(true);
+        updateBizOrderCommand.setConcluded(true);
+        updateBizOrderCommand.setVersion(command.getVersion());
+        updateBizOrderCommand.setChangeId(command.getTxId());
+        updateBizOrderCommand.setOrderId(command.getOrderId());
+        updateOrder(command, updateBizOrderCommand, command.getTxId());
     }
 
-    public void reservedOrder(CreateBizStateMachineCommand machineCommand) {
-        updateOrder(machineCommand, AppUpdateBizOrderCommand.CommandType.RESERVE);
+    public void reservedOrder(CreateBizStateMachineCommand command) {
+        UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
+        updateBizOrderCommand.setOrderStorage(true);
+        updateBizOrderCommand.setVersion(command.getVersion());
+        updateBizOrderCommand.setChangeId(command.getTxId());
+        updateBizOrderCommand.setOrderId(command.getOrderId());
+        updateOrder(command, updateBizOrderCommand, command.getTxId());
     }
 
-    public void cancelReservedOrder(CreateBizStateMachineCommand machineCommand, String cancelTxId, String txId) {
+    public void cancelUpdateOrder(CreateBizStateMachineCommand command, String cancelTxId, String txId) {
         log.info("start of cancel created order");
-        updateOrder(machineCommand, AppUpdateBizOrderCommand.CommandType.CANCEL_RESERVE, cancelTxId);
+        CancelUpdateBizOrderCommand cancelUpdateBizOrderCommand = new CancelUpdateBizOrderCommand();
+        cancelUpdateBizOrderCommand.setCancelChangeId(txId);
+        cancelUpdateBizOrderCommand.setChangeId(cancelTxId);
+        cancelUpdateOrder(command, cancelUpdateBizOrderCommand, cancelTxId);
         log.info("end of cancel created order");
     }
 
@@ -70,55 +85,44 @@ public class OrderService {
         log.info("complete saveNewOrder");
     }
 
-    public void cancelCreateNewOrder(CreateBizStateMachineCommand command, String cancelTxId, String txId) {
-        log.info("start of cancel created order");
-        updateOrder(command, AppUpdateBizOrderCommand.CommandType.CANCEL_CREATE, cancelTxId);
-        log.info("end of cancel created order");
-    }
-
-    public void cancelConcludeOrder(CreateBizStateMachineCommand command, String cancelTxId, String txId) {
-        log.info("start of cancel conclude order");
-        updateOrder(command, AppUpdateBizOrderCommand.CommandType.CANCEL_CONCLUDE, cancelTxId);
-        log.info("end of cancel conclude order");
-    }
-
-    public void cancelConfirmPayment(CreateBizStateMachineCommand command, String cancelTxId, String txId) {
-        log.info("start of cancel conclude order");
-        updateOrder(command, AppUpdateBizOrderCommand.CommandType.CANCEL_CONFIRM_PAYMENT, cancelTxId);
-        log.info("end of cancel conclude order");
-    }
-
-    public void cancelRecycleOrder(CreateBizStateMachineCommand command, String cancelTxId, String txId) {
-        log.info("start of cancel recycle order");
-        updateOrder(command, AppUpdateBizOrderCommand.CommandType.CANCEL_RECYCLE, cancelTxId);
-        log.info("end of cancel recycle order");
-    }
 
     public void confirmPayment(CreateBizStateMachineCommand command) {
-        updateOrder(command, AppUpdateBizOrderCommand.CommandType.CONFIRM_PAYMENT);
+        UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
+        updateBizOrderCommand.setPaid(true);
+        updateBizOrderCommand.setVersion(command.getVersion());
+        updateBizOrderCommand.setChangeId(command.getTxId());
+        updateBizOrderCommand.setOrderId(command.getOrderId());
+        updateOrder(command, updateBizOrderCommand, command.getTxId());
     }
 
     public void recycleOrder(CreateBizStateMachineCommand command) {
-        updateOrder(command, AppUpdateBizOrderCommand.CommandType.RECYCLE);
+        UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
+        updateBizOrderCommand.setOrderStorage(false);
+        updateBizOrderCommand.setVersion(command.getVersion());
+        updateBizOrderCommand.setChangeId(command.getTxId());
+        updateBizOrderCommand.setOrderId(command.getOrderId());
+        updateOrder(command, updateBizOrderCommand, command.getTxId());
     }
 
-    private void updateOrder(CreateBizStateMachineCommand machineCommand, AppUpdateBizOrderCommand.CommandType commandType) {
-        updateOrder(machineCommand, commandType, machineCommand.getTxId());
-    }
-
-    private void updateOrder(CreateBizStateMachineCommand machineCommand, AppUpdateBizOrderCommand.CommandType commandType, String changeId) {
-        log.info("starting update order to {}", commandType);
+    private void updateOrder(CreateBizStateMachineCommand machineCommand, UpdateBizOrderCommand command, String changeId) {
+        log.info("starting update order to {}", command);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add(HTTP_HEADER_CHANGE_ID, changeId);
-        AppUpdateBizOrderCommand command = new AppUpdateBizOrderCommand();
-        command.setOrderId(machineCommand.getOrderId());
-        command.setCommandType(commandType);
-        command.setVersion(machineCommand.getVersion());
-        HttpEntity<AppUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(command, headers);
+        HttpEntity<UpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(command, headers);
         String applicationUrl = eurekaHelper.getApplicationUrl(appName);
         restTemplate.exchange(applicationUrl + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
-        log.info("starting update order to {}", commandType);
+        log.info("starting update order");
     }
 
+    private void cancelUpdateOrder(CreateBizStateMachineCommand machineCommand, CancelUpdateBizOrderCommand command, String changeId) {
+        log.info("starting update order to {}", command);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add(HTTP_HEADER_CHANGE_ID, changeId);
+        HttpEntity<CancelUpdateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(command, headers);
+        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
+        restTemplate.exchange(applicationUrl + orderUrl + "/" + machineCommand.getOrderId(), HttpMethod.PUT, hashMapHttpEntity, String.class);
+        log.info("starting update order");
+    }
 }

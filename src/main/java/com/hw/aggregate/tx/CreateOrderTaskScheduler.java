@@ -122,7 +122,7 @@ public class CreateOrderTaskScheduler {
         );
         // cancel create order
         CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                orderService.cancelCreateNewOrder(command, bizTx.getCancelTxId(), command.getTxId()), customExecutor
+                orderService.cancelUpdateOrder(command, bizTx.getCancelTxId(), command.getTxId()), customExecutor
         );
 
         try {
