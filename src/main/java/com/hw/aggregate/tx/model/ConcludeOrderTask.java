@@ -30,6 +30,7 @@ public class ConcludeOrderTask extends Auditable implements Aggregate, Serializa
     private TaskStatus taskStatus;
 
     private String taskId;
+    private boolean cancelBlocked=false;
 
     private String cancelTaskId;
     @Lob

@@ -60,7 +60,7 @@ public class RecycleOrderTaskScheduler {
     public void rollbackTask() {
         log.debug("expired recycle tasks scanning started");
         Date from = Date.from(Instant.ofEpochMilli(Instant.now().toEpochMilli() - taskExpireAfter * 60 * 1000));
-        List<RecycleOrderTask> tasks = taskRepository.findExpiredStartedOrFailTxs(from);
+        List<RecycleOrderTask> tasks = taskRepository.findExpiredStartedOrFailNonBlockedTxs(from);
         if (!tasks.isEmpty()) {
             log.info("expired & started task found {}", tasks.stream().map(RecycleOrderTask::getId).collect(Collectors.toList()));
             tasks.stream().limit(5).forEach(task -> {
@@ -109,7 +109,7 @@ public class RecycleOrderTaskScheduler {
 
         // cancel order update
         CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                orderService.cancelUpdateOrder(command, bizTx.getCancelTaskId(), command.getTxId()), customExecutor
+                orderService.cancelRecycleOrder(command, bizTx.getCancelTaskId(), command.getTxId()), customExecutor
         );
 
         try {
@@ -117,6 +117,7 @@ public class RecycleOrderTaskScheduler {
             bizTx.setIncreaseOrderStorageSubTaskStatus(SubTaskStatus.CANCELLED);
         } catch (InterruptedException | ExecutionException e) {
             log.error("error during order storage cancel",e);
+            bizTx.setCancelBlocked(true);
             //do nothing
         }
 
@@ -125,6 +126,7 @@ public class RecycleOrderTaskScheduler {
             bizTx.setUpdateOrderSubTaskStatus(SubTaskStatus.CANCELLED);
         } catch (InterruptedException | ExecutionException ex) {
             log.error("error during order cancel",ex);
+            bizTx.setCancelBlocked(true);
             //do nothing
         }
         if (

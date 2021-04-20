@@ -32,6 +32,7 @@ public class ReserveOrderTask extends Auditable implements Aggregate, Serializab
     private String taskId;
 
     private String cancelTaskId;
+    private boolean cancelBlocked=false;
     @Lob
     private String createBizStateMachineCommand;
 

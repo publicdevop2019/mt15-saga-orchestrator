@@ -62,7 +62,7 @@ public class ReserveOrderTaskScheduler {
     public void rollbackTask() {
         log.debug("expired reserve tasks scanning started");
         Date from = Date.from(Instant.ofEpochMilli(Instant.now().toEpochMilli() - taskExpireAfter * 60 * 1000));
-        List<ReserveOrderTask> tasks = taskRepository.findExpiredStartedOrFailTxs(from);
+        List<ReserveOrderTask> tasks = taskRepository.findExpiredStartedOrFailNonBlockedTxs(from);
         if (!tasks.isEmpty()) {
             log.info("expired & started task found {}", tasks.stream().map(ReserveOrderTask::getId).collect(Collectors.toList()));
             tasks.stream().limit(5).forEach(task -> {
@@ -111,7 +111,7 @@ public class ReserveOrderTaskScheduler {
 
         // cancel order update
         CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                orderService.cancelUpdateOrder(command, bizTx.getCancelTaskId(), command.getTxId()), customExecutor
+                orderService.cancelReserveOrder(command, bizTx.getCancelTaskId(), command.getTxId()), customExecutor
         );
 
         try {
@@ -119,6 +119,7 @@ public class ReserveOrderTaskScheduler {
             bizTx.setDecreaseOrderStorageSubTaskStatus(SubTaskStatus.CANCELLED);
         } catch (InterruptedException | ExecutionException e) {
             log.error("error during order storage cancel", e);
+            bizTx.setCancelBlocked(true);
             //do nothing
         }
 
@@ -127,6 +128,7 @@ public class ReserveOrderTaskScheduler {
             bizTx.setUpdateOrderSubTaskStatus(SubTaskStatus.CANCELLED);
         } catch (InterruptedException | ExecutionException ex) {
             log.error("error during order cancel", ex);
+            bizTx.setCancelBlocked(true);
             //do nothing
         }
         if (

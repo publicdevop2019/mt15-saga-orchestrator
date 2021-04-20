@@ -63,7 +63,7 @@ public class ConfirmOrderPaymentTaskScheduler {
     public void rollbackTask() {
         log.debug("expired reserve tasks scanning started");
         Date from = Date.from(Instant.ofEpochMilli(Instant.now().toEpochMilli() - taskExpireAfter * 60 * 1000));
-        List<ConfirmOrderPaymentTask> tasks = taskRepository.findExpiredStartedOrFailTxs(from);
+        List<ConfirmOrderPaymentTask> tasks = taskRepository.findExpiredStartedOrFailNonBlockedTxs(from);
         if (!tasks.isEmpty()) {
             log.info("expired & started task found {}", tasks.stream().map(ConfirmOrderPaymentTask::getId).collect(Collectors.toList()));
             tasks.stream().limit(5).forEach(task -> {
@@ -107,7 +107,7 @@ public class ConfirmOrderPaymentTaskScheduler {
 
         // cancel order update
         CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                orderService.cancelUpdateOrder(command, bizTx.getCancelTaskId(), command.getTxId()), customExecutor
+                orderService.cancelConfirmPayment(command, bizTx.getCancelTaskId(), command.getTxId()), customExecutor
         );
 
         try {
@@ -115,6 +115,7 @@ public class ConfirmOrderPaymentTaskScheduler {
             bizTx.setUpdateOrderSubTaskStatus(SubTaskStatus.CANCELLED);
         } catch (InterruptedException | ExecutionException ex) {
             log.error("error during order cancel", ex);
+            bizTx.setCancelBlocked(true);
             //do nothing
         }
         if (

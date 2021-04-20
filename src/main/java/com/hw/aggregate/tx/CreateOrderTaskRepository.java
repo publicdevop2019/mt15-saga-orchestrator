@@ -13,8 +13,8 @@ import java.util.Optional;
 
 @Repository
 public interface CreateOrderTaskRepository extends JpaRepository<CreateOrderTask, Long> {
-    @Query("SELECT p FROM #{#entityName} as p WHERE p.createdAt < ?1 AND (p.txStatus = 'STARTED' OR p.txStatus = 'FAILED')")
-    List<CreateOrderTask> findExpiredStartedOrFailTxs(Date from);
+    @Query("SELECT p FROM #{#entityName} as p WHERE p.createdAt < ?1 AND (p.txStatus = 'STARTED' OR p.txStatus = 'FAILED') AND p.cancelBlocked = false")
+    List<CreateOrderTask> findExpiredStartedOrFailNonBlockedTxs(Date from);
 
     @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
     @Query("SELECT p FROM #{#entityName} as p WHERE p.id = ?1")

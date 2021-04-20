@@ -32,6 +32,7 @@ public class CreateOrderTask extends Auditable implements Aggregate, Serializabl
     private String txId;
 
     private String cancelTxId;
+    private boolean cancelBlocked=false;
     @Lob
     private String createBizStateMachineCommand;
     @Embedded

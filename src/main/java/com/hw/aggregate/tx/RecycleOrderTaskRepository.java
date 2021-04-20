@@ -14,8 +14,8 @@ import java.util.Optional;
 
 @Repository
 public interface RecycleOrderTaskRepository extends JpaRepository<RecycleOrderTask, Long> {
-    @Query("SELECT p FROM #{#entityName} as p WHERE p.createdAt < ?1 AND (p.taskStatus = 'STARTED' OR p.taskStatus = 'FAILED')")
-    List<RecycleOrderTask> findExpiredStartedOrFailTxs(Date from);
+    @Query("SELECT p FROM #{#entityName} as p WHERE p.createdAt < ?1 AND (p.taskStatus = 'STARTED' OR p.taskStatus = 'FAILED') AND p.cancelBlocked = false")
+    List<RecycleOrderTask> findExpiredStartedOrFailNonBlockedTxs(Date from);
 
     @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
     @Query("SELECT p FROM #{#entityName} as p WHERE p.id = ?1")

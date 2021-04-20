@@ -32,6 +32,7 @@ public class ConfirmOrderPaymentTask extends Auditable implements Aggregate, Ser
     private String taskId;
 
     private String cancelTaskId;
+    private boolean cancelBlocked=false;
     @Lob
     private String createBizStateMachineCommand;
 
