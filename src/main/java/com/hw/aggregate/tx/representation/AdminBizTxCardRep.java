@@ -22,8 +22,8 @@ public class AdminBizTxCardRep {
 
     public AdminBizTxCardRep(CreateOrderTask bizTask) {
         BeanUtils.copyProperties(bizTask, this);
-        this.taskName = bizTask.getTxName();
-        this.taskStatus = bizTask.getTxStatus();
-        this.transactionId = bizTask.getTxId();
+        this.taskName = bizTask.getTaskName();
+        this.taskStatus = bizTask.getTaskStatus();
+        this.transactionId = bizTask.getTaskId();
     }
 }

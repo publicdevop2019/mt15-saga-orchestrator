@@ -9,10 +9,10 @@ import javax.persistence.Convert;
 @Setter
 @Getter
 public class SaveCreatedOrderSubTask {
-    @Column(name = "createOrderStatus")
+    @Column(name = "createOrderSubTaskStatus")
     @Convert(converter = SubTaskStatus.DBConverter.class)
     private SubTaskStatus status = SubTaskStatus.STARTED;
-    @Column(name = "createOrderResult")
+    @Column(name = "createOrderSubTaskResult")
     private boolean result;
 
     public SaveCreatedOrderSubTask() {

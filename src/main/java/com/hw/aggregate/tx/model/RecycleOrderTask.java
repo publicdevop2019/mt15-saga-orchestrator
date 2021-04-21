@@ -44,15 +44,16 @@ public class RecycleOrderTask extends Auditable implements Aggregate, Serializab
     @Version
     @Setter(AccessLevel.NONE)
     private Integer version;
-
-    public static RecycleOrderTask createTask(Long id, String command, String changeId) {
-        return new RecycleOrderTask(id, command, changeId);
+    private String orderId;
+    public static RecycleOrderTask createTask(Long id, String command, String changeId, String orderId) {
+        return new RecycleOrderTask(id, command, changeId,orderId);
     }
 
-    public RecycleOrderTask(Long id, String command, String changeId) {
+    public RecycleOrderTask(Long id, String command, String changeId, String orderId) {
         this.id = id;
         this.taskStatus = TaskStatus.STARTED;
         this.taskId = changeId;
+        this.orderId = orderId;
         this.cancelTaskId = changeId + "_cancel";
         createBizStateMachineCommand = command;
     }

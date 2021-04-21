@@ -30,7 +30,7 @@ public class ReserveOrderTask extends Auditable implements Aggregate, Serializab
     private TaskStatus taskStatus;
 
     private String taskId;
-
+    private String orderId;
     private String cancelTaskId;
     private boolean cancelBlocked=false;
     @Lob
@@ -44,14 +44,15 @@ public class ReserveOrderTask extends Auditable implements Aggregate, Serializab
     @Setter(AccessLevel.NONE)
     private Integer version;
 
-    public static ReserveOrderTask createTask(Long id, String command, String changeId) {
-        return new ReserveOrderTask(id, command, changeId);
+    public static ReserveOrderTask createTask(Long id, String command, String changeId, String orderId) {
+        return new ReserveOrderTask(id, command, changeId,orderId);
     }
 
-    public ReserveOrderTask(Long id, String command, String changeId) {
+    public ReserveOrderTask(Long id, String command, String changeId, String orderId) {
         this.id = id;
         this.taskStatus = TaskStatus.STARTED;
         this.taskId = changeId;
+        this.orderId = orderId;
         this.cancelTaskId = changeId + "_cancel";
         createBizStateMachineCommand = command;
     }

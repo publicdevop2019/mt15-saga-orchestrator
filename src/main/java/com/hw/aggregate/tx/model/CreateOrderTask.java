@@ -23,50 +23,52 @@ public class CreateOrderTask extends Auditable implements Aggregate, Serializabl
 
     @Column(length = 50)
     @Convert(converter = TaskName.DBConverter.class)
-    private TaskName txName;
+    private TaskName taskName;
 
     @Column(length = 25)
     @Convert(converter = TaskStatus.DBConverter.class)
-    private TaskStatus txStatus;
+    private TaskStatus taskStatus;
 
-    private String txId;
+    private String taskId;
+    private String orderId;
 
-    private String cancelTxId;
-    private boolean cancelBlocked=false;
+    private String cancelTaskId;
+    private boolean cancelBlocked = false;
     @Lob
     private String createBizStateMachineCommand;
     @Embedded
-    private SaveCreatedOrderSubTask createOrderTx;
+    private SaveCreatedOrderSubTask createOrderSubTask;
 
     @Convert(converter = SubTaskStatus.DBConverter.class)
-    private SubTaskStatus decreaseOrderStorageTxStatus = SubTaskStatus.STARTED;
+    private SubTaskStatus decreaseOrderStorageSubTaskStatus = SubTaskStatus.STARTED;
 
     @Embedded
-    private GeneratePaymentLinkSubTask generatePaymentLinkTx;
+    private GeneratePaymentLinkSubTask generatePaymentLinkSubTask;
 
     @Convert(converter = SubTaskStatus.DBConverter.class)
-    private SubTaskStatus removeItemsFromCartStatus = SubTaskStatus.STARTED;
+    private SubTaskStatus removeItemsFromCartSubTaskStatus = SubTaskStatus.STARTED;
     @Embedded
-    private ValidateOrderSubTask validateOrderTx;
+    private ValidateOrderSubTask validateOrderSubTask;
 
     @Version
     @Setter(AccessLevel.NONE)
     private Integer version;
 
-    public static CreateOrderTask createTask(Long id, String command, String changeId) {
-        return new CreateOrderTask(id, command, changeId);
+    public static CreateOrderTask createTask(Long id, String command, String changeId, String orderId) {
+        return new CreateOrderTask(id, command, changeId, orderId);
     }
 
-    public CreateOrderTask(Long id, String command, String changeId) {
+    public CreateOrderTask(Long id, String command, String changeId, String orderId) {
         this.id = id;
-        this.txName = TaskName.CREATE_ORDER;
-        this.txStatus = TaskStatus.STARTED;
-        this.txId = changeId;
-        this.cancelTxId = changeId + "_cancel";
+        this.taskName = TaskName.CREATE_ORDER;
+        this.taskStatus = TaskStatus.STARTED;
+        this.taskId = changeId;
+        this.orderId = orderId;
+        this.cancelTaskId = changeId + "_cancel";
         createBizStateMachineCommand = command;
-        createOrderTx = new SaveCreatedOrderSubTask();
-        generatePaymentLinkTx = new GeneratePaymentLinkSubTask();
-        validateOrderTx = new ValidateOrderSubTask();
+        createOrderSubTask = new SaveCreatedOrderSubTask();
+        generatePaymentLinkSubTask = new GeneratePaymentLinkSubTask();
+        validateOrderSubTask = new ValidateOrderSubTask();
     }
 
 

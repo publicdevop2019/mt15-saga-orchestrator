@@ -73,7 +73,7 @@ public class CreateOrderTaskScheduler {
                                     Optional<CreateOrderTask> byIdOptLock = taskRepository.findByIdOptLock(task.getId());
                                     if (byIdOptLock.isPresent()
                                             && byIdOptLock.get().getCreatedAt().compareTo(from) < 0
-                                            && (byIdOptLock.get().getTxStatus().equals(TaskStatus.STARTED) || byIdOptLock.get().getTxStatus().equals(TaskStatus.FAILED) )
+                                            && (byIdOptLock.get().getTaskStatus().equals(TaskStatus.STARTED) || byIdOptLock.get().getTaskStatus().equals(TaskStatus.FAILED) )
                                     ) {
                                         log.info("rolling back task with id {}", task.getId());
                                         rollbackCreate(task);
@@ -100,34 +100,34 @@ public class CreateOrderTaskScheduler {
             throw new IllegalArgumentException("unable to parse");
         }
         List<RuntimeException> exs = new ArrayList<>();
-        log.info("start of cancel task of {} with {}", bizTx.getTxId(), bizTx.getCancelTxId());
+        log.info("start of cancel task of {} with {}", bizTx.getTaskId(), bizTx.getCancelTaskId());
 
         // cancel payment QR link
         CompletableFuture<Void> paymentQRLinkFuture = CompletableFuture.runAsync(() ->
                 {
-                    paymentService.cancelPaymentLink(bizTx.getCancelTxId(), bizTx.getTxId());
+                    paymentService.cancelPaymentLink(bizTx.getCancelTaskId(), bizTx.getTaskId());
                 }, customExecutor
         );
 
         // cancel sku
         CompletableFuture<Void> decreaseOrderStorageFuture = CompletableFuture.runAsync(() ->
-                productService.cancelUpdateProductStorage(productService.getReserveOrderPatchCommands(command.getProductList()), bizTx.getCancelTxId(), bizTx.getTxId()), customExecutor
+                productService.cancelUpdateProductStorage(productService.getReserveOrderPatchCommands(command.getProductList()), bizTx.getCancelTaskId(), bizTx.getTaskId()), customExecutor
         );
 
         // cancel clear cart
         CompletableFuture<Void> clearCartFuture = CompletableFuture.runAsync(() -> {
                     Set<String> collect = command.getProductList().stream().map(CartDetail::getCartId).collect(Collectors.toSet());
-                    cartService.cancelClearCart(command.getUserId(), collect, bizTx.getCancelTxId(), bizTx.getTxId());
+                    cartService.cancelClearCart(command.getUserId(), collect, bizTx.getCancelTaskId(), bizTx.getTaskId());
                 }, customExecutor
         );
         // cancel create order
         CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                orderService.cancelCreateNewOrder(command, bizTx.getCancelTxId(), command.getTxId()), customExecutor
+                orderService.cancelCreateNewOrder(command, bizTx.getCancelTaskId(), command.getTxId()), customExecutor
         );
 
         try {
             paymentQRLinkFuture.get();
-            bizTx.getGeneratePaymentLinkTx().setStatus(SubTaskStatus.CANCELLED);
+            bizTx.getGeneratePaymentLinkSubTask().setStatus(SubTaskStatus.CANCELLED);
         } catch (InterruptedException | ExecutionException e) {
             log.error("error during payment cancel",e);
             bizTx.setCancelBlocked(true);
@@ -135,7 +135,7 @@ public class CreateOrderTaskScheduler {
         }
         try {
             decreaseOrderStorageFuture.get();
-            bizTx.setDecreaseOrderStorageTxStatus(SubTaskStatus.CANCELLED);
+            bizTx.setDecreaseOrderStorageSubTaskStatus(SubTaskStatus.CANCELLED);
         } catch (InterruptedException | ExecutionException e) {
             log.error("error during order storage cancel",e);
             bizTx.setCancelBlocked(true);
@@ -143,7 +143,7 @@ public class CreateOrderTaskScheduler {
         }
         try {
             clearCartFuture.get();
-            bizTx.setRemoveItemsFromCartStatus(SubTaskStatus.CANCELLED);
+            bizTx.setRemoveItemsFromCartSubTaskStatus(SubTaskStatus.CANCELLED);
         } catch (InterruptedException | ExecutionException e) {
             log.error("error during cart cancel",e);
             bizTx.setCancelBlocked(true);
@@ -152,19 +152,19 @@ public class CreateOrderTaskScheduler {
 
         try {
             updateOrderFuture.get();
-            bizTx.getCreateOrderTx().setStatus(SubTaskStatus.CANCELLED);
+            bizTx.getCreateOrderSubTask().setStatus(SubTaskStatus.CANCELLED);
         } catch (InterruptedException | ExecutionException ex) {
             log.error("error during order cancel",ex);
             bizTx.setCancelBlocked(true);
             //do nothing
         }
         if (
-                bizTx.getGeneratePaymentLinkTx().getStatus().equals(SubTaskStatus.CANCELLED) &&
-                        bizTx.getDecreaseOrderStorageTxStatus().equals(SubTaskStatus.CANCELLED) &&
-                        bizTx.getRemoveItemsFromCartStatus().equals(SubTaskStatus.CANCELLED) &&
-                        bizTx.getCreateOrderTx().getStatus().equals(SubTaskStatus.CANCELLED)
+                bizTx.getGeneratePaymentLinkSubTask().getStatus().equals(SubTaskStatus.CANCELLED) &&
+                        bizTx.getDecreaseOrderStorageSubTaskStatus().equals(SubTaskStatus.CANCELLED) &&
+                        bizTx.getRemoveItemsFromCartSubTaskStatus().equals(SubTaskStatus.CANCELLED) &&
+                        bizTx.getCreateOrderSubTask().getStatus().equals(SubTaskStatus.CANCELLED)
         ) {
-            bizTx.setTxStatus(TaskStatus.CANCELLED);
+            bizTx.setTaskStatus(TaskStatus.CANCELLED);
         }
 
         taskRepository.save(bizTx);

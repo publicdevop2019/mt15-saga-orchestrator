@@ -12,7 +12,7 @@ public class AppBizTxRep {
 
     public AppBizTxRep(CreateOrderTask bizTask) {
         BeanUtils.copyProperties(bizTask, this);
-        this.transactionId = bizTask.getTxId();
+        this.transactionId = bizTask.getTaskId();
     }
 
 }

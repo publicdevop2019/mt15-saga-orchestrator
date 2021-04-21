@@ -30,9 +30,10 @@ public class ConfirmOrderPaymentTask extends Auditable implements Aggregate, Ser
     private TaskStatus taskStatus;
 
     private String taskId;
+    private String orderId;
 
     private String cancelTaskId;
-    private boolean cancelBlocked=false;
+    private boolean cancelBlocked = false;
     @Lob
     private String createBizStateMachineCommand;
 
@@ -42,14 +43,15 @@ public class ConfirmOrderPaymentTask extends Auditable implements Aggregate, Ser
     @Setter(AccessLevel.NONE)
     private Integer version;
 
-    public static ConfirmOrderPaymentTask createTask(Long id, String command, String changeId) {
-        return new ConfirmOrderPaymentTask(id, command, changeId);
+    public static ConfirmOrderPaymentTask createTask(Long id, String command, String changeId, String orderId) {
+        return new ConfirmOrderPaymentTask(id, command, changeId,orderId);
     }
 
-    public ConfirmOrderPaymentTask(Long id, String command, String changeId) {
+    public ConfirmOrderPaymentTask(Long id, String command, String changeId, String orderId) {
         this.id = id;
         this.taskStatus = TaskStatus.STARTED;
         this.taskId = changeId;
+        this.orderId = orderId;
         this.cancelTaskId = changeId + "_cancel";
         createBizStateMachineCommand = command;
     }

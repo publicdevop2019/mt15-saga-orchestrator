@@ -30,7 +30,8 @@ public class ConcludeOrderTask extends Auditable implements Aggregate, Serializa
     private TaskStatus taskStatus;
 
     private String taskId;
-    private boolean cancelBlocked=false;
+    private String orderId;
+    private boolean cancelBlocked = false;
 
     private String cancelTaskId;
     @Lob
@@ -44,14 +45,15 @@ public class ConcludeOrderTask extends Auditable implements Aggregate, Serializa
     @Setter(AccessLevel.NONE)
     private Integer version;
 
-    public static ConcludeOrderTask createTask(Long id, String command, String changeId) {
-        return new ConcludeOrderTask(id, command, changeId);
+    public static ConcludeOrderTask createTask(Long id, String command, String changeId, String orderId) {
+        return new ConcludeOrderTask(id, command, changeId, orderId);
     }
 
-    public ConcludeOrderTask(Long id, String command, String changeId) {
+    public ConcludeOrderTask(Long id, String command, String changeId, String orderId) {
         this.id = id;
         this.taskStatus = TaskStatus.STARTED;
         this.taskId = changeId;
+        this.orderId = orderId;
         this.cancelTaskId = changeId + "_cancel";
         createBizStateMachineCommand = command;
     }

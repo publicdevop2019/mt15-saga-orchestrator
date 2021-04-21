@@ -264,7 +264,7 @@ public class CustomStateMachineBuilder {
                                     // read task again make sure it's still valid & apply opt lock
 
                                     CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-                                    CreateOrderTask bizTx = CreateOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId());
+                                    CreateOrderTask bizTx = CreateOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId(), customerOrder.getOrderId());
                                     createOrderTaskRepository.save(bizTx);
                                     context.getExtendedState().getVariables().put(TX_TASK, bizTx);
                                 }
@@ -282,7 +282,7 @@ public class CustomStateMachineBuilder {
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
                                     CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-                                    RecycleOrderTask task = RecycleOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId());
+                                    RecycleOrderTask task = RecycleOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId(),customerOrder.getOrderId());
                                     recycleOrderTaskRepository.save(task);
                                     context.getExtendedState().getVariables().put(TX_TASK, task);
                                 }
@@ -300,7 +300,7 @@ public class CustomStateMachineBuilder {
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
                                     CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-                                    ReserveOrderTask task = ReserveOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId());
+                                    ReserveOrderTask task = ReserveOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId(),customerOrder.getOrderId());
                                     reserveOrderTaskRepository.save(task);
                                     context.getExtendedState().getVariables().put(TX_TASK, task);
                                 }
@@ -318,7 +318,7 @@ public class CustomStateMachineBuilder {
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
                                     CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-                                    ConfirmOrderPaymentTask task = ConfirmOrderPaymentTask.createTask(id, getCommandAsString(context), customerOrder.getTxId());
+                                    ConfirmOrderPaymentTask task = ConfirmOrderPaymentTask.createTask(id, getCommandAsString(context), customerOrder.getTxId(), customerOrder.getOrderId());
                                     confirmOrderPaymentTaskRepository.save(task);
                                     context.getExtendedState().getVariables().put(TX_TASK, task);
                                 }
@@ -336,7 +336,7 @@ public class CustomStateMachineBuilder {
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
                                     CreateBizStateMachineCommand customerOrder = context.getExtendedState().get(BIZ_ORDER, CreateBizStateMachineCommand.class);
-                                    ConcludeOrderTask task = ConcludeOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId());
+                                    ConcludeOrderTask task = ConcludeOrderTask.createTask(id, getCommandAsString(context), customerOrder.getTxId(), customerOrder.getOrderId());
                                     concludeOrderTaskRepository.save(task);
                                     context.getExtendedState().getVariables().put(TX_TASK, task);
                                 }
@@ -378,28 +378,28 @@ public class CustomStateMachineBuilder {
 
             // generate payment QR link
             CompletableFuture<String> paymentQRLinkFuture = CompletableFuture.supplyAsync(() ->
-                    paymentService.generatePaymentLink(command.getOrderId(), bizTx.getTxId()), customExecutor
+                    paymentService.generatePaymentLink(command.getOrderId(), bizTx.getTaskId()), customExecutor
             );
 
             // decrease order storage
             CompletableFuture<Void> decreaseOrderStorageFuture = CompletableFuture.runAsync(() ->
-                    productService.updateProductStorage(productService.getReserveOrderPatchCommands(command.getProductList()), bizTx.getTxId()), customExecutor
+                    productService.updateProductStorage(productService.getReserveOrderPatchCommands(command.getProductList()), bizTx.getTaskId()), customExecutor
             );
 
             // clear cart
             CompletableFuture<Void> clearCartFuture = CompletableFuture.runAsync(() -> {
                         Set<String> collect = command.getProductList().stream().map(CartDetail::getCartId).collect(Collectors.toSet());
-                        cartService.clearCart(command.getUserId(), collect, bizTx.getTxId());
+                        cartService.clearCart(command.getUserId(), collect, bizTx.getTaskId());
                     }, customExecutor
             );
 
             String paymentLink = null;
             try {
                 paymentLink = paymentQRLinkFuture.get();
-                bizTx.getGeneratePaymentLinkTx().setResults(paymentLink);
-                bizTx.getGeneratePaymentLinkTx().setStatus(SubTaskStatus.COMPLETED);
+                bizTx.getGeneratePaymentLinkSubTask().setResults(paymentLink);
+                bizTx.getGeneratePaymentLinkSubTask().setStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
-                bizTx.getGeneratePaymentLinkTx().setStatus(SubTaskStatus.FAILED);
+                bizTx.getGeneratePaymentLinkSubTask().setStatus(SubTaskStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -410,17 +410,17 @@ public class CustomStateMachineBuilder {
             }
             try {
                 Boolean aBoolean = validateResultFuture.get();
-                bizTx.getValidateOrderTx().setResult(aBoolean);
+                bizTx.getValidateOrderSubTask().setResult(aBoolean);
                 if (aBoolean.compareTo(Boolean.TRUE) == 0) {
-                    bizTx.getValidateOrderTx().setResult(true);
-                    bizTx.getValidateOrderTx().setStatus(SubTaskStatus.COMPLETED);
+                    bizTx.getValidateOrderSubTask().setResult(true);
+                    bizTx.getValidateOrderSubTask().setStatus(SubTaskStatus.COMPLETED);
                 } else {
-                    bizTx.getValidateOrderTx().setResult(false);
+                    bizTx.getValidateOrderSubTask().setResult(false);
                     exs.add(new BizOrderInvalidException());
-                    bizTx.getValidateOrderTx().setStatus(SubTaskStatus.FAILED);
+                    bizTx.getValidateOrderSubTask().setStatus(SubTaskStatus.FAILED);
                 }
             } catch (InterruptedException | ExecutionException e) {
-                bizTx.getValidateOrderTx().setStatus(SubTaskStatus.FAILED);
+                bizTx.getValidateOrderSubTask().setStatus(SubTaskStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -431,9 +431,9 @@ public class CustomStateMachineBuilder {
             }
             try {
                 decreaseOrderStorageFuture.get();
-                bizTx.setDecreaseOrderStorageTxStatus(SubTaskStatus.COMPLETED);
+                bizTx.setDecreaseOrderStorageSubTaskStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
-                bizTx.setDecreaseOrderStorageTxStatus(SubTaskStatus.FAILED);
+                bizTx.setDecreaseOrderStorageSubTaskStatus(SubTaskStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -444,9 +444,9 @@ public class CustomStateMachineBuilder {
             }
             try {
                 clearCartFuture.get();
-                bizTx.setRemoveItemsFromCartStatus(SubTaskStatus.COMPLETED);
+                bizTx.setRemoveItemsFromCartSubTaskStatus(SubTaskStatus.COMPLETED);
             } catch (InterruptedException | ExecutionException e) {
-                bizTx.setRemoveItemsFromCartStatus(SubTaskStatus.FAILED);
+                bizTx.setRemoveItemsFromCartSubTaskStatus(SubTaskStatus.FAILED);
                 if (e instanceof InterruptedException) {
                     log.warn("thread was interrupted", e);
                     context.getStateMachine().setStateMachineError(e);
@@ -474,15 +474,15 @@ public class CustomStateMachineBuilder {
             );
             try {
                 updateOrderFuture.get();
-                bizTx.getCreateOrderTx().setStatus(SubTaskStatus.COMPLETED);
+                bizTx.getCreateOrderSubTask().setStatus(SubTaskStatus.COMPLETED);
             } catch (ExecutionException ex) {
-                bizTx.getCreateOrderTx().setStatus(SubTaskStatus.FAILED);
+                bizTx.getCreateOrderSubTask().setStatus(SubTaskStatus.FAILED);
                 markCreateTaskAs(context, TaskStatus.FAILED);
                 if (updateOrderFuture.isCompletedExceptionally())
                     context.getStateMachine().setStateMachineError(new BizOrderUpdateException(ex));
                 return false;
             } catch (InterruptedException e) {
-                bizTx.getCreateOrderTx().setStatus(SubTaskStatus.FAILED);
+                bizTx.getCreateOrderSubTask().setStatus(SubTaskStatus.FAILED);
                 markCreateTaskAs(context, TaskStatus.FAILED);
                 log.warn("thread was interrupted", e);
                 context.getStateMachine().setStateMachineError(e);
@@ -685,7 +685,7 @@ public class CustomStateMachineBuilder {
     private void markCreateTaskAs(StateContext<BizOrderStatus, BizOrderEvent> context, TaskStatus txStatus) {
         log.info("mark task as {}", txStatus);
         CreateOrderTask o = (CreateOrderTask) context.getExtendedState().getVariables().get(TX_TASK);
-        o.setTxStatus(txStatus);
+        o.setTaskStatus(txStatus);
         createOrderTaskRepository.save(o);
     }
 
