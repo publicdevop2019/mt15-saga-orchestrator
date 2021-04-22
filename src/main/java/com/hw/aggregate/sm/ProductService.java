@@ -15,6 +15,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -223,8 +224,8 @@ public class ProductService {
         });
     }
 
-    public static List<PatchCommand> buildRollbackCommand(List<PatchCommand> deepCopy) {
-        deepCopy.forEach(e -> {
+    public static List<PatchCommand> buildRollbackCommand(List<PatchCommand> original) {
+        original.forEach(e -> {
             if (e.getOp().equalsIgnoreCase(PATCH_OP_TYPE_SUM)) {
                 e.setOp(PATCH_OP_TYPE_DIFF);
             } else if (e.getOp().equalsIgnoreCase(PATCH_OP_TYPE_DIFF)) {
@@ -233,7 +234,7 @@ public class ProductService {
                 throw new RollbackNotSupportedException();
             }
         });
-        return deepCopy;
+        return original;
     }
 
     private boolean hasChange(String changeId) {

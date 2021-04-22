@@ -6,10 +6,10 @@ import com.hw.aggregate.sm.OrderService;
 import com.hw.aggregate.sm.PaymentService;
 import com.hw.aggregate.sm.ProductService;
 import com.hw.aggregate.sm.command.CreateBizStateMachineCommand;
-import com.hw.aggregate.tx.model.CreateOrderTask;
 import com.hw.aggregate.tx.model.RecycleOrderTask;
 import com.hw.aggregate.tx.model.SubTaskStatus;
 import com.hw.aggregate.tx.model.TaskStatus;
+import com.hw.shared.sql.PatchCommand;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -25,7 +25,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -73,7 +76,7 @@ public class RecycleOrderTaskScheduler {
                                     Optional<RecycleOrderTask> byIdOptLock = taskRepository.findByIdOptLock(task.getId());
                                     if (byIdOptLock.isPresent()
                                             && byIdOptLock.get().getCreatedAt().compareTo(from) < 0
-                                            && (byIdOptLock.get().getTaskStatus().equals(TaskStatus.STARTED) || byIdOptLock.get().getTaskStatus().equals(TaskStatus.FAILED) )
+                                            && (byIdOptLock.get().getTaskStatus().equals(TaskStatus.STARTED) || byIdOptLock.get().getTaskStatus().equals(TaskStatus.FAILED))
                                     ) {
                                         log.info("rolling back task with id {}", task.getId());
                                         cancelRecycleTask(task);
@@ -103,8 +106,13 @@ public class RecycleOrderTaskScheduler {
         log.info("start of cancel task of {} with {}", bizTx.getTaskId(), bizTx.getCancelTaskId());
 
         // cancel order storage change
-        CompletableFuture<Void> decreaseOrderStorageFuture = CompletableFuture.runAsync(() ->
-                productService.cancelUpdateProductStorage(productService.getReserveOrderPatchCommands(command.getProductList()), bizTx.getCancelTaskId(), bizTx.getTaskId()), customExecutor
+        CompletableFuture<Void> decreaseOrderStorageFuture = CompletableFuture.runAsync(() -> {
+                    //reserve=>recycle=>cancel
+                    List<PatchCommand> reserveOrderPatchCommands = productService.getReserveOrderPatchCommands(command.getProductList());
+                    List<PatchCommand> patchCommands = ProductService.buildRollbackCommand(reserveOrderPatchCommands);
+                    productService.cancelUpdateProductStorage(patchCommands, bizTx.getCancelTaskId(), bizTx.getTaskId());
+                }, customExecutor
+
         );
 
         // cancel order update
@@ -116,7 +124,7 @@ public class RecycleOrderTaskScheduler {
             decreaseOrderStorageFuture.get();
             bizTx.setIncreaseOrderStorageSubTaskStatus(SubTaskStatus.CANCELLED);
         } catch (InterruptedException | ExecutionException e) {
-            log.error("error during order storage cancel",e);
+            log.error("error during order storage cancel", e);
             bizTx.setCancelBlocked(true);
             //do nothing
         }
@@ -125,7 +133,7 @@ public class RecycleOrderTaskScheduler {
             updateOrderFuture.get();
             bizTx.setUpdateOrderSubTaskStatus(SubTaskStatus.CANCELLED);
         } catch (InterruptedException | ExecutionException ex) {
-            log.error("error during order cancel",ex);
+            log.error("error during order cancel", ex);
             bizTx.setCancelBlocked(true);
             //do nothing
         }
