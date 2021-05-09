@@ -12,12 +12,14 @@ public class ApplicationServiceRegistry {
     private static OrderStateMachineApplicationService stateMachineApplicationService;
     @Getter
     private static TaskApplicationService taskApplicationService;
+
     @Autowired
-    private void setStateMachineApplicationService(OrderStateMachineApplicationService stateMachineApplicationService){
-        ApplicationServiceRegistry.stateMachineApplicationService=stateMachineApplicationService;
+    private void setStateMachineApplicationService(OrderStateMachineApplicationService stateMachineApplicationService) {
+        ApplicationServiceRegistry.stateMachineApplicationService = stateMachineApplicationService;
     }
+
     @Autowired
-    private void setTaskApplicationService(TaskApplicationService taskApplicationService){
-        ApplicationServiceRegistry.taskApplicationService=taskApplicationService;
+    private void setTaskApplicationService(TaskApplicationService taskApplicationService) {
+        ApplicationServiceRegistry.taskApplicationService = taskApplicationService;
     }
 }

@@ -1,6 +1,5 @@
 package com.mt.saga.infrastructure;
 
-import com.mt.saga.domain.model.order_state_machine.CustomAsyncExceptionHandler;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +11,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
 @EnableAsync
-public class AsyncThreadPoolConfig implements AsyncConfigurer {
+public class SpringAsyncThreadPoolConfig implements AsyncConfigurer {
     @Bean
     public TaskExecutor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -38,6 +37,6 @@ public class AsyncThreadPoolConfig implements AsyncConfigurer {
 
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
-        return new CustomAsyncExceptionHandler();
+        return new SpringAsyncExceptionHandler();
     }
 }

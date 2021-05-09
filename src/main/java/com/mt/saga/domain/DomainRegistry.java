@@ -1,6 +1,7 @@
 package com.mt.saga.domain;
 
 import com.mt.saga.domain.model.order_state_machine.OrderStateMachineBuilder;
+import com.mt.saga.domain.model.task.*;
 import com.mt.saga.domain.model.task.conclude_order_task.ConcludeOrderTaskRepository;
 import com.mt.saga.domain.model.task.confirm_order_payment_task.ConfirmOrderPaymentTaskRepository;
 import com.mt.saga.domain.model.task.create_order_task.CreateOrderTaskRepository;
@@ -25,10 +26,45 @@ public class DomainRegistry {
     private static ConfirmOrderPaymentTaskRepository confirmOrderPaymentTaskRepository;
     @Getter
     private static ConcludeOrderTaskRepository concludeOrderTaskRepository;
+    @Getter
+    private static CartService cartService;
+    @Getter
+    private static MessengerService messengerService;
+    @Getter
+    private static OrderService orderService;
+    @Getter
+    private static PaymentService paymentService;
+    @Getter
+    private static ProductService productService;
+
+    @Autowired
+    private void setOrderService(OrderService orderService) {
+        DomainRegistry.orderService = orderService;
+    }
+
+    @Autowired
+    private void setProductService(ProductService productService) {
+        DomainRegistry.productService = productService;
+    }
+
+    @Autowired
+    private void setPaymentService(PaymentService paymentService) {
+        DomainRegistry.paymentService = paymentService;
+    }
 
     @Autowired
     private void setConcludeOrderTaskRepository(ConcludeOrderTaskRepository concludeOrderTaskRepository) {
         DomainRegistry.concludeOrderTaskRepository = concludeOrderTaskRepository;
+    }
+
+    @Autowired
+    private void setMessengerService(MessengerService messengerService) {
+        DomainRegistry.messengerService = messengerService;
+    }
+
+    @Autowired
+    private void setCartService(CartService cartService) {
+        DomainRegistry.cartService = cartService;
     }
 
     @Autowired

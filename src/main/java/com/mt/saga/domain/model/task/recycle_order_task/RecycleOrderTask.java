@@ -5,10 +5,8 @@ import com.mt.common.domain.model.audit.Auditable;
 import com.mt.saga.domain.model.task.SubTaskStatus;
 import com.mt.saga.domain.model.task.TaskName;
 import com.mt.saga.domain.model.task.TaskStatus;
-import lombok.AccessLevel;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -35,7 +33,7 @@ public class RecycleOrderTask extends Auditable implements Serializable {
     private String taskId;
 
     private String cancelTaskId;
-    private boolean cancelBlocked=false;
+    private boolean cancelBlocked = false;
     @Lob
     private String createBizStateMachineCommand;
 

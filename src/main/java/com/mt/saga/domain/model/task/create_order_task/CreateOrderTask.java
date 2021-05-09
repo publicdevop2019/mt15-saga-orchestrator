@@ -2,11 +2,11 @@ package com.mt.saga.domain.model.task.create_order_task;
 
 import com.mt.common.domain.CommonDomainRegistry;
 import com.mt.common.domain.model.audit.Auditable;
-import com.mt.saga.domain.model.task.*;
-import lombok.AccessLevel;
+import com.mt.saga.domain.model.task.SubTaskStatus;
+import com.mt.saga.domain.model.task.TaskName;
+import com.mt.saga.domain.model.task.TaskStatus;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import javax.persistence.*;
 import java.io.Serializable;

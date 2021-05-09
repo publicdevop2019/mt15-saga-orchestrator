@@ -19,14 +19,15 @@ public class TaskApplicationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CreateOrderTask createCreateOrderTask(OrderOperationEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
-        CreateOrderTask createOrderTask = new CreateOrderTask(serialize, customerOrder.getTxId(),customerOrder.getOrderId());
+        CreateOrderTask createOrderTask = new CreateOrderTask(serialize, customerOrder.getTxId(), customerOrder.getOrderId());
         DomainRegistry.getCreateOrderTaskRepository().add(createOrderTask);
         return createOrderTask;
     }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public RecycleOrderTask createRecycleOrderTask( OrderOperationEvent customerOrder) {
+    public RecycleOrderTask createRecycleOrderTask(OrderOperationEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
-        RecycleOrderTask recycleOrderTask = new RecycleOrderTask(serialize, customerOrder.getTxId(),customerOrder.getOrderId());
+        RecycleOrderTask recycleOrderTask = new RecycleOrderTask(serialize, customerOrder.getTxId(), customerOrder.getOrderId());
         DomainRegistry.getRecycleOrderTaskRepository().add(recycleOrderTask);
         return recycleOrderTask;
     }
@@ -35,7 +36,7 @@ public class TaskApplicationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ReserveOrderTask createReserveOrderTask(OrderOperationEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
-        ReserveOrderTask task = new ReserveOrderTask(serialize, customerOrder.getTxId(),customerOrder.getOrderId());
+        ReserveOrderTask task = new ReserveOrderTask(serialize, customerOrder.getTxId(), customerOrder.getOrderId());
         DomainRegistry.getReserveOrderTaskRepository().add(task);
         return task;
     }
@@ -43,14 +44,15 @@ public class TaskApplicationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ConfirmOrderPaymentTask createConfirmOrderPaymentTask(OrderOperationEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
-        ConfirmOrderPaymentTask task = new ConfirmOrderPaymentTask(serialize, customerOrder.getTxId(),customerOrder.getOrderId());
+        ConfirmOrderPaymentTask task = new ConfirmOrderPaymentTask(serialize, customerOrder.getTxId(), customerOrder.getOrderId());
         DomainRegistry.getConfirmOrderPaymentTaskRepository().add(task);
         return task;
     }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ConcludeOrderTask createConcludeOrderTask(OrderOperationEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
-        ConcludeOrderTask task = new ConcludeOrderTask(serialize, customerOrder.getTxId(),customerOrder.getOrderId());
+        ConcludeOrderTask task = new ConcludeOrderTask(serialize, customerOrder.getTxId(), customerOrder.getOrderId());
         DomainRegistry.getConcludeOrderTaskRepository().add(task);
         return task;
     }

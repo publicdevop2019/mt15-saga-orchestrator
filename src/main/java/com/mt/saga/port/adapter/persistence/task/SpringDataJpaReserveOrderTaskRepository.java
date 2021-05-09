@@ -27,6 +27,11 @@ public interface SpringDataJpaReserveOrderTaskRepository extends JpaRepository<R
     }
 
     @Override
+    default Optional<ReserveOrderTask> findByIdLocked(Long id) {
+        return findByIdOptLock(id);
+    }
+
+    @Override
     default List<ReserveOrderTask> findRollbackTasks(Date from) {
         return findExpiredStartedOrFailNonBlockedTxs(from);
     }

@@ -1,4 +1,4 @@
-package com.mt.saga.port.adapter.http;
+package com.mt.saga.infrastructure;
 
 import com.mt.common.domain.model.logging.ErrorMessage;
 import com.mt.saga.domain.model.order_state_machine.exception.*;
@@ -20,7 +20,7 @@ import static com.mt.common.CommonConstant.HTTP_HEADER_ERROR_ID;
 @Slf4j
 @ControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
-public class DomainExceptionHandler extends ResponseEntityExceptionHandler {
+public class SpringExceptionHttpHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(value = {
             BizOrderValidationException.class,

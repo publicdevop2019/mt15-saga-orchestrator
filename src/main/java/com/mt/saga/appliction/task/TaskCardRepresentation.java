@@ -1,13 +1,13 @@
 package com.mt.saga.appliction.task;
 
-import com.mt.saga.domain.model.task.create_order_task.CreateOrderTask;
 import com.mt.saga.domain.model.task.TaskName;
 import com.mt.saga.domain.model.task.TaskStatus;
+import com.mt.saga.domain.model.task.create_order_task.CreateOrderTask;
 import lombok.Data;
 import org.springframework.beans.BeanUtils;
 
 @Data
-public class AdminBizTxCardRepresentation {
+public class TaskCardRepresentation {
     private Long id;
     private TaskName taskName;
     private TaskStatus taskStatus;
@@ -20,7 +20,7 @@ public class AdminBizTxCardRepresentation {
     private String modifiedBy;
     private long modifiedAt;
 
-    public AdminBizTxCardRepresentation(CreateOrderTask bizTask) {
+    public TaskCardRepresentation(CreateOrderTask bizTask) {
         BeanUtils.copyProperties(bizTask, this);
         this.taskName = bizTask.getTaskName();
         this.taskStatus = bizTask.getTaskStatus();

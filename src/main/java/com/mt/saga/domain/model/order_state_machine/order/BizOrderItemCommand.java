@@ -15,6 +15,6 @@ public class BizOrderItemCommand {
     private Long productId;
     private String imageUrlSmall;
     private Set<String> attributesSales;
-    private Map<String,String> attrIdMap;
+    private Map<String, String> attrIdMap;
 
 }

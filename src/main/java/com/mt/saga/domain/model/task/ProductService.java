@@ -1,18 +1,11 @@
 package com.mt.saga.domain.model.task;
 
 import com.mt.common.domain.model.restful.PatchCommand;
-import com.mt.common.domain.model.restful.SumPagedRep;
-import com.mt.common.domain.model.service_discovery.EurekaHelper;
 import com.mt.saga.domain.model.order_state_machine.order.BizOrderItemAddOn;
 import com.mt.saga.domain.model.order_state_machine.order.BizOrderItemAddOnSelection;
 import com.mt.saga.domain.model.order_state_machine.order.CartDetail;
 import com.mt.saga.domain.model.order_state_machine.product.ProductsSummary;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -22,67 +15,17 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.mt.common.CommonConstant.*;
+import static com.mt.common.CommonConstant.PATCH_OP_TYPE_DIFF;
+import static com.mt.common.CommonConstant.PATCH_OP_TYPE_SUM;
 
-
-@Service
 @Slf4j
-public class ProductService {
+public abstract class ProductService {
+    public abstract void updateProductStorage(List<PatchCommand> changeList, String txId);
 
-    @Value("${mt.url.mall.skus}")
-    private String skusUrl;
-    @Value("${mt.url.mall.products}")
-    private String productUrl;
+    public abstract void cancelUpdateProductStorage(List<PatchCommand> originalChange, String cancelTxId, String txId);
 
-    @Value("${mt.url.mall.change}")
-    private String changeUrl;
 
-    @Autowired
-    private EurekaHelper eurekaHelper;
-    @Autowired
-    private RestTemplate restTemplate;
-
-    @Value("${mt.discovery.mall}")
-    private String appName;
-
-    public void updateProductStorage(List<PatchCommand> changeList, String txId) {
-        log.info("starting updateProductStorage");
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add(HTTP_HEADER_CHANGE_ID, txId);
-        HttpEntity<List<PatchCommand>> hashMapHttpEntity = new HttpEntity<>(changeList, headers);
-        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
-        restTemplate.exchange(applicationUrl + skusUrl, HttpMethod.PATCH, hashMapHttpEntity, String.class);
-        log.info("complete updateProductStorage");
-    }
-
-    public void cancelUpdateProductStorage(List<PatchCommand> originalChange, String cancelTxId, String txId) {
-        if (hasChange(txId)) {
-            updateProductStorage(PatchCommand.buildRollbackCommand(originalChange), cancelTxId);
-        }
-    }
-
-    public boolean validateOrderedProduct(List<CartDetail> customerOrderItemList) {
-        log.info("start of validate order");
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<List<CartDetail>> hashMapHttpEntity = new HttpEntity<>(customerOrderItemList, headers);
-
-        List<String> collect = customerOrderItemList.stream().map(CartDetail::getProductId).collect(Collectors.toList());
-        String query = getQuery(collect);
-        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
-
-        ResponseEntity<ProductsSummary> exchange = restTemplate.exchange(applicationUrl + productUrl + query, HttpMethod.GET, hashMapHttpEntity, ProductsSummary.class);
-        ProductsSummary body = exchange.getBody();
-        boolean b = validateProducts(body, customerOrderItemList);
-        log.info("end of validate order, result is {}", b);
-        return b;
-    }
-
-    private String getQuery(List<String> ids) {
-        return "?" + HTTP_PARAM_QUERY + "=id:" + String.join(".", ids);
-
-    }
+    public abstract boolean validateOrderedProduct(List<CartDetail> customerOrderItemList);
 
     public List<PatchCommand> getReserveOrderPatchCommands(List<CartDetail> collect2) {
         List<PatchCommand> details = new ArrayList<>();
@@ -170,15 +113,9 @@ public class ProductService {
                     //compare option value for each title
                     String optionValue = userSelected.getOptions().get(0).getOptionValue();
                     Optional<ProductsSummary.AppProductOption.OptionItem> first1 = storedOptionItem.options.stream().filter(optionItem -> optionItem.getOptionValue().equals(optionValue)).findFirst();
-                    if (first1.isEmpty())
-                        return false;
-                    return true;
+                    return first1.isPresent();
                 }).findFirst();
-                if (first.isEmpty())
-                    return false;
-                else {
-                    return true;
-                }
+                return first.isPresent();
             });
             if (!optionAllMatch)
                 return true;
@@ -221,16 +158,5 @@ public class ProductService {
             }
             return true;
         });
-    }
-
-
-    private boolean hasChange(String changeId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set(HTTP_HEADER_CHANGE_ID, changeId);
-        HttpEntity<String> hashMapHttpEntity = new HttpEntity<>(headers);
-        String applicationUrl = eurekaHelper.getApplicationUrl(appName);
-        ResponseEntity<SumPagedRep> exchange = restTemplate.exchange(applicationUrl + changeUrl + "?" + HTTP_PARAM_QUERY + "=" + "entityType:Sku,changeId:" + changeId, HttpMethod.GET, hashMapHttpEntity, SumPagedRep.class);
-        return exchange.getBody().getData().size() == 1;
     }
 }

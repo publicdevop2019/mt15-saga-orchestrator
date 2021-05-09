@@ -27,6 +27,11 @@ public interface SpringDataJpaConfirmOrderPaymentTaskRepository extends JpaRepos
     }
 
     @Override
+    default Optional<ConfirmOrderPaymentTask> findByIdLocked(Long id) {
+        return findByIdOptLock(id);
+    }
+
+    @Override
     default List<ConfirmOrderPaymentTask> findRollbackTasks(Date from) {
         return findExpiredStartedOrFailNonBlockedTxs(from);
     }

@@ -4,19 +4,21 @@ import com.mt.common.domain.model.restful.PatchCommand;
 import com.mt.saga.appliction.ApplicationServiceRegistry;
 import com.mt.saga.appliction.order_state_machine.OrderStateMachineApplicationService;
 import com.mt.saga.domain.DomainRegistry;
-import com.mt.saga.domain.model.order_state_machine.CustomStateMachineEventListener;
 import com.mt.saga.domain.model.order_state_machine.OrderStateMachineBuilder;
 import com.mt.saga.domain.model.order_state_machine.event.OrderOperationEvent;
 import com.mt.saga.domain.model.order_state_machine.exception.*;
 import com.mt.saga.domain.model.order_state_machine.order.BizOrderEvent;
 import com.mt.saga.domain.model.order_state_machine.order.BizOrderStatus;
 import com.mt.saga.domain.model.order_state_machine.order.CartDetail;
-import com.mt.saga.domain.model.task.*;
+import com.mt.saga.domain.model.task.BizTxPersistenceException;
+import com.mt.saga.domain.model.task.SubTaskStatus;
+import com.mt.saga.domain.model.task.TaskStatus;
 import com.mt.saga.domain.model.task.conclude_order_task.ConcludeOrderTask;
 import com.mt.saga.domain.model.task.confirm_order_payment_task.ConfirmOrderPaymentTask;
 import com.mt.saga.domain.model.task.create_order_task.CreateOrderTask;
 import com.mt.saga.domain.model.task.recycle_order_task.RecycleOrderTask;
 import com.mt.saga.domain.model.task.reserve_order_task.ReserveOrderTask;
+import com.mt.saga.port.adapter.http.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -38,7 +40,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import static com.mt.saga.domain.model.order_state_machine.CustomStateMachineEventListener.ERROR_CLASS;
+import static com.mt.saga.infrastructure.SpringStateMachineErrorHandler.ERROR_CLASS;
 
 /**
  * each guard is an unit of work, roll back when failure happen
@@ -50,19 +52,19 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
     public static final String TX_TASK = "TxTask";
     public static final String BIZ_ORDER = "BIZ_ORDER";
     @Autowired
-    private PaymentService paymentService;
+    private HttpPaymentService paymentService;
 
     @Autowired
-    private ProductService productService;
+    private HttpProductService productService;
 
     @Autowired
-    private MessengerService messengerService;
+    private HttpMessengerService messengerService;
 
     @Autowired
-    private OrderService orderService;
+    private HttpOrderService orderService;
 
     @Autowired
-    private CartService cartService;
+    private HttpCartService cartService;
 
     @Autowired
     private OrderStateMachineApplicationService stateMachineApplicationService;
@@ -78,7 +80,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
     private EntityManager entityManager;
 
     @Autowired
-    private CustomStateMachineEventListener customStateMachineEventListener;
+    private SpringStateMachineErrorHandler customStateMachineEventListener;
 
     public StateMachine<BizOrderStatus, BizOrderEvent> buildMachine(BizOrderStatus initialState) {
         StateMachineBuilder.Builder<BizOrderStatus, BizOrderEvent> builder = StateMachineBuilder.builder();

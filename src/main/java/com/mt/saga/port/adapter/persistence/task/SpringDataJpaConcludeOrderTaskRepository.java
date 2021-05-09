@@ -22,6 +22,11 @@ public interface SpringDataJpaConcludeOrderTaskRepository extends JpaRepository<
     Optional<ConcludeOrderTask> findByIdOptLock(Long id);
 
     @Override
+    default Optional<ConcludeOrderTask> findByIdLocked(Long id) {
+        return findByIdOptLock(id);
+    }
+
+    @Override
     default void add(ConcludeOrderTask createOrderTask) {
         save(createOrderTask);
     }

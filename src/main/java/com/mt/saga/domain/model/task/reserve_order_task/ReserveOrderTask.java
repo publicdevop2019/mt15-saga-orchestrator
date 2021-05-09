@@ -5,10 +5,8 @@ import com.mt.common.domain.model.audit.Auditable;
 import com.mt.saga.domain.model.task.SubTaskStatus;
 import com.mt.saga.domain.model.task.TaskName;
 import com.mt.saga.domain.model.task.TaskStatus;
-import lombok.AccessLevel;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -17,7 +15,7 @@ import java.io.Serializable;
 @Table
 @Data
 @NoArgsConstructor
-public class ReserveOrderTask extends Auditable implements  Serializable {
+public class ReserveOrderTask extends Auditable implements Serializable {
     public static final String ENTITY_TX_NAME = "txName";
     public static final String ENTITY_TX_STATUS = "txStatus";
     public static final String ENTITY_REFERENCE_ID = "referenceId";
@@ -35,7 +33,7 @@ public class ReserveOrderTask extends Auditable implements  Serializable {
     private String taskId;
     private String orderId;
     private String cancelTaskId;
-    private boolean cancelBlocked=false;
+    private boolean cancelBlocked = false;
     @Lob
     private String createBizStateMachineCommand;
 
@@ -45,7 +43,7 @@ public class ReserveOrderTask extends Auditable implements  Serializable {
     private SubTaskStatus updateOrderSubTaskStatus = SubTaskStatus.STARTED;
 
 
-    public ReserveOrderTask( String command, String changeId, String orderId) {
+    public ReserveOrderTask(String command, String changeId, String orderId) {
         this.id = CommonDomainRegistry.getUniqueIdGeneratorService().id();
         this.taskStatus = TaskStatus.STARTED;
         this.taskId = changeId;
