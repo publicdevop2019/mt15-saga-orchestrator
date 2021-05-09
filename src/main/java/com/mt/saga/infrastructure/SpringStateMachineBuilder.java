@@ -51,20 +51,6 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
 
     public static final String TX_TASK = "TxTask";
     public static final String BIZ_ORDER = "BIZ_ORDER";
-    @Autowired
-    private HttpPaymentService paymentService;
-
-    @Autowired
-    private HttpProductService productService;
-
-    @Autowired
-    private HttpMessengerService messengerService;
-
-    @Autowired
-    private HttpOrderService orderService;
-
-    @Autowired
-    private HttpCartService cartService;
 
     @Autowired
     private OrderStateMachineApplicationService stateMachineApplicationService;
@@ -186,14 +172,14 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
             RecycleOrderTask task = context.getExtendedState().get(TX_TASK, RecycleOrderTask.class);
             // increase order storage
             CompletableFuture<Void> increaseOrderStorageFuture = CompletableFuture.runAsync(() -> {
-                        List<PatchCommand> patchCommands = PatchCommand.buildRollbackCommand(productService.getReserveOrderPatchCommands(machineCommand.getProductList()));
-                        productService.updateProductStorage(patchCommands, task.getTaskId());
+                        List<PatchCommand> patchCommands = PatchCommand.buildRollbackCommand(DomainRegistry.getProductService().getReserveOrderPatchCommands(machineCommand.getProductList()));
+                DomainRegistry.getProductService().updateProductStorage(patchCommands, task.getTaskId());
                     }, customExecutor
             );
 
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.recycleOrder(machineCommand), customExecutor
+                    DomainRegistry.getOrderService().recycleOrder(machineCommand), customExecutor
             );
 
             List<RuntimeException> exs = new ArrayList<>();
@@ -354,23 +340,23 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
             log.info("start of prepareNewOrder of {}", command.getOrderId());
             // validate product info
             CompletableFuture<Boolean> validateResultFuture = CompletableFuture.supplyAsync(() ->
-                    productService.validateOrderedProduct(command.getProductList()), customExecutor
+                    DomainRegistry.getProductService().validateOrderedProduct(command.getProductList()), customExecutor
             );
 
             // generate payment QR link
             CompletableFuture<String> paymentQRLinkFuture = CompletableFuture.supplyAsync(() ->
-                    paymentService.generatePaymentLink(command.getOrderId(), bizTx.getTaskId()), customExecutor
+                    DomainRegistry.getPaymentService().generatePaymentLink(command.getOrderId(), bizTx.getTaskId()), customExecutor
             );
 
             // decrease order storage
             CompletableFuture<Void> decreaseOrderStorageFuture = CompletableFuture.runAsync(() ->
-                    productService.updateProductStorage(productService.getReserveOrderPatchCommands(command.getProductList()), bizTx.getTaskId()), customExecutor
+                    DomainRegistry.getProductService().updateProductStorage(DomainRegistry.getProductService().getReserveOrderPatchCommands(command.getProductList()), bizTx.getTaskId()), customExecutor
             );
 
             // clear cart
             CompletableFuture<Void> clearCartFuture = CompletableFuture.runAsync(() -> {
                         Set<String> collect = command.getProductList().stream().map(CartDetail::getCartId).collect(Collectors.toSet());
-                        cartService.clearCart(command.getUserId(), collect, bizTx.getTaskId());
+                        DomainRegistry.getCartService().clearCart(command.getUserId(), collect, bizTx.getTaskId());
                     }, customExecutor
             );
 
@@ -451,7 +437,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
             // update order
             String finalPaymentLink = paymentLink;
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.createNewOrder(finalPaymentLink, command), customExecutor
+                    DomainRegistry.getOrderService().createNewOrder(finalPaymentLink, command), customExecutor
             );
             try {
                 updateOrderFuture.get();
@@ -483,12 +469,12 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
 
             // decrease order storage
             CompletableFuture<Void> decreaseOrderStorageFuture = CompletableFuture.runAsync(() ->
-                    productService.updateProductStorage(productService.getReserveOrderPatchCommands(stateMachineCommand.getProductList()), task.getTaskId()), customExecutor
+                    DomainRegistry.getProductService().updateProductStorage(DomainRegistry.getProductService().getReserveOrderPatchCommands(stateMachineCommand.getProductList()), task.getTaskId()), customExecutor
             );
 
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.reservedOrder(stateMachineCommand), customExecutor
+                    DomainRegistry.getOrderService().reservedOrder(stateMachineCommand), customExecutor
             );
 
             List<RuntimeException> exs = new ArrayList<>();
@@ -534,7 +520,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
     private Action<BizOrderStatus, BizOrderEvent> sendNotification() {
         return context -> {
             log.info("start of sendEmailNotification");
-            messengerService.notifyBusinessOwner(new HashMap<>());
+            DomainRegistry.getMessengerService().notifyBusinessOwner(new HashMap<>());
         };
     }
 
@@ -545,12 +531,12 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
             log.info("start of decreaseActualStorage for {}", machineCommand.getOrderId());
             // decrease actual storage
             CompletableFuture<Void> decreaseActualStorageFuture = CompletableFuture.runAsync(() ->
-                    productService.updateProductStorage(productService.getConfirmOrderPatchCommands(machineCommand.getProductList()), task.getTaskId()), customExecutor
+                    DomainRegistry.getProductService().updateProductStorage(DomainRegistry.getProductService().getConfirmOrderPatchCommands(machineCommand.getProductList()), task.getTaskId()), customExecutor
             );
 
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.concludeOrder(machineCommand), customExecutor
+                    DomainRegistry.getOrderService().concludeOrder(machineCommand), customExecutor
             );
 
             List<RuntimeException> exs = new ArrayList<>();
@@ -601,12 +587,12 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
 
             // confirm payment
             CompletableFuture<Boolean> confirmPaymentFuture = CompletableFuture.supplyAsync(() ->
-                    paymentService.confirmPaymentStatus(bizOrder.getOrderId()), customExecutor
+                    DomainRegistry.getPaymentService().confirmPaymentStatus(bizOrder.getOrderId()), customExecutor
             );
 
             // update order
             CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    orderService.confirmPayment(bizOrder), customExecutor
+                    DomainRegistry.getOrderService().confirmPayment(bizOrder), customExecutor
             );
 
             List<RuntimeException> exs = new ArrayList<>();
