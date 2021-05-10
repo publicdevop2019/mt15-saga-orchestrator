@@ -30,7 +30,7 @@ public class CreateOrderTask extends Auditable implements Serializable {
     @Convert(converter = TaskStatus.DBConverter.class)
     private TaskStatus taskStatus;
 
-    private String taskId;
+    private String changeId;
     private String orderId;
 
     private String cancelTaskId;
@@ -55,7 +55,7 @@ public class CreateOrderTask extends Auditable implements Serializable {
         this.id = CommonDomainRegistry.getUniqueIdGeneratorService().id();
         this.taskName = TaskName.CREATE_ORDER;
         this.taskStatus = TaskStatus.STARTED;
-        this.taskId = changeId;
+        this.changeId = changeId;
         this.orderId = orderId;
         this.cancelTaskId = changeId + "_cancel";
         createBizStateMachineCommand = command;
@@ -65,4 +65,20 @@ public class CreateOrderTask extends Auditable implements Serializable {
     }
 
 
+    public void checkAllSubTaskStatus() {
+        if(createOrderSubTask.getStatus().equals(SubTaskStatus.COMPLETED)
+                && decreaseOrderStorageSubTaskStatus.equals(SubTaskStatus.COMPLETED)
+                && removeItemsFromCartSubTaskStatus.equals(SubTaskStatus.COMPLETED)
+                && validateOrderSubTask.getStatus().equals(SubTaskStatus.COMPLETED)
+                && generatePaymentLinkSubTask.getStatus().equals(SubTaskStatus.COMPLETED)){
+            setTaskStatus(TaskStatus.COMPLETED);
+        }
+        if(createOrderSubTask.getStatus().equals(SubTaskStatus.FAILED)
+                || decreaseOrderStorageSubTaskStatus.equals(SubTaskStatus.FAILED)
+                || removeItemsFromCartSubTaskStatus.equals(SubTaskStatus.FAILED)
+                || validateOrderSubTask.getStatus().equals(SubTaskStatus.FAILED)
+                || generatePaymentLinkSubTask.getStatus().equals(SubTaskStatus.FAILED)){
+            setTaskStatus(TaskStatus.FAILED);
+        }
+    }
 }

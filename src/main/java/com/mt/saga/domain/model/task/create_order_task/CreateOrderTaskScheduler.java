@@ -77,24 +77,24 @@ public class CreateOrderTaskScheduler {
 
     private void rollbackCreate(CreateOrderTask bizTx) {
         OrderOperationEvent command = CommonDomainRegistry.getCustomObjectSerializer().deserialize(bizTx.getCreateBizStateMachineCommand(), OrderOperationEvent.class);
-        log.info("start of cancel task of {} with {}", bizTx.getTaskId(), bizTx.getCancelTaskId());
+        log.info("start of cancel task of {} with {}", bizTx.getChangeId(), bizTx.getCancelTaskId());
 
         // cancel payment QR link
         CompletableFuture<Void> paymentQRLinkFuture = CompletableFuture.runAsync(() ->
                 {
-                    DomainRegistry.getPaymentService().cancelPaymentLink(bizTx.getCancelTaskId(), bizTx.getTaskId());
+                    DomainRegistry.getPaymentService().cancelPaymentLink(bizTx.getCancelTaskId(), bizTx.getChangeId());
                 }, customExecutor
         );
 
         // cancel sku
         CompletableFuture<Void> decreaseOrderStorageFuture = CompletableFuture.runAsync(() ->
-                DomainRegistry.getProductService().cancelUpdateProductStorage(DomainRegistry.getProductService().getReserveOrderPatchCommands(command.getProductList()), bizTx.getCancelTaskId(), bizTx.getTaskId()), customExecutor
+                DomainRegistry.getProductService().cancelUpdateProductStorage(DomainRegistry.getProductService().getReserveOrderPatchCommands(command.getProductList()), bizTx.getCancelTaskId(), bizTx.getChangeId()), customExecutor
         );
 
         // cancel clear cart
         CompletableFuture<Void> clearCartFuture = CompletableFuture.runAsync(() -> {
                     Set<String> collect = command.getProductList().stream().map(CartDetail::getCartId).collect(Collectors.toSet());
-                    DomainRegistry.getCartService().cancelClearCart(command.getUserId(), collect, bizTx.getCancelTaskId(), bizTx.getTaskId());
+                    DomainRegistry.getCartService().cancelClearCart(command.getUserId(), collect, bizTx.getCancelTaskId(), bizTx.getChangeId());
                 }, customExecutor
         );
         // cancel create order
@@ -143,7 +143,7 @@ public class CreateOrderTaskScheduler {
         ) {
             bizTx.setTaskStatus(TaskStatus.CANCELLED);
         }
-        DomainRegistry.getCreateOrderTaskRepository().add(bizTx);
+        DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(bizTx);
     }
 
 }

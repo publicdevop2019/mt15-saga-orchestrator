@@ -7,7 +7,7 @@ import java.util.Optional;
 public interface CreateOrderTaskRepository {
     List<CreateOrderTask> findRollbackTasks(Date from);
 
-    void add(CreateOrderTask createOrderTask);
+    void createOrUpdate(CreateOrderTask createOrderTask);
 
     Optional<CreateOrderTask> findByIdLocked(Long id);
 }

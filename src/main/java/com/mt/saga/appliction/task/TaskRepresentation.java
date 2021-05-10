@@ -12,7 +12,7 @@ public class TaskRepresentation {
 
     public TaskRepresentation(CreateOrderTask bizTask) {
         BeanUtils.copyProperties(bizTask, this);
-        this.transactionId = bizTask.getTaskId();
+        this.transactionId = bizTask.getChangeId();
     }
 
 }

@@ -23,7 +23,7 @@ public interface SpringDataJpaCreateOrderTaskRepository extends JpaRepository<Cr
 
     @Override
 
-    default void add(CreateOrderTask createOrderTask) {
+    default void createOrUpdate(CreateOrderTask createOrderTask) {
         save(createOrderTask);
     }
 

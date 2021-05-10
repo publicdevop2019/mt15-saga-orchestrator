@@ -122,22 +122,12 @@ public class HttpOrderService implements OrderService {
     }
 
     @Override
-    public void createNewOrder(String paymentLink, OrderOperationEvent command) {
+    public void createNewOrder(AppCreateBizOrderCommand command, String changeId) {
         log.info("starting saveNewOrder");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add(HTTP_HEADER_CHANGE_ID, command.getTxId());
-        AppCreateBizOrderCommand appCreateBizOrderCommand = new AppCreateBizOrderCommand();
-        appCreateBizOrderCommand.setAddress(command.getAddress());
-        appCreateBizOrderCommand.setCreatedBy(command.getCreatedBy());
-        appCreateBizOrderCommand.setOrderId(command.getOrderId());
-        appCreateBizOrderCommand.setOrderState(BizOrderStatus.DRAFT);
-        appCreateBizOrderCommand.setPaymentAmt(command.getPaymentAmt());
-        appCreateBizOrderCommand.setPaymentType(command.getPaymentType());
-        appCreateBizOrderCommand.setPaymentLink(paymentLink);
-        appCreateBizOrderCommand.setProductList(command.getProductList());
-        appCreateBizOrderCommand.setUserId(command.getUserId());
-        HttpEntity<AppCreateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(appCreateBizOrderCommand, headers);
+        headers.add(HTTP_HEADER_CHANGE_ID, changeId);
+        HttpEntity<AppCreateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(command, headers);
         String applicationUrl = eurekaHelper.getApplicationUrl(appName);
         restTemplate.exchange(applicationUrl + orderUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
         log.info("complete saveNewOrder");

@@ -1,12 +1,19 @@
 package com.mt.saga.infrastructure;
 
+import com.mt.common.domain.model.domain_event.DomainEventPublisher;
+import com.mt.common.domain.model.domain_event.SubscribeForEvent;
 import com.mt.common.domain.model.restful.PatchCommand;
 import com.mt.saga.appliction.ApplicationServiceRegistry;
 import com.mt.saga.appliction.order_state_machine.OrderStateMachineApplicationService;
 import com.mt.saga.domain.DomainRegistry;
 import com.mt.saga.domain.model.order_state_machine.OrderStateMachineBuilder;
 import com.mt.saga.domain.model.order_state_machine.event.OrderOperationEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.ClearCartEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.DecreaseOrderStorageEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.GeneratePaymentQRLinkEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.ValidateProductEvent;
 import com.mt.saga.domain.model.order_state_machine.exception.*;
+import com.mt.saga.domain.model.order_state_machine.order.AppCreateBizOrderCommand;
 import com.mt.saga.domain.model.order_state_machine.order.BizOrderEvent;
 import com.mt.saga.domain.model.order_state_machine.order.BizOrderStatus;
 import com.mt.saga.domain.model.order_state_machine.order.CartDetail;
@@ -18,7 +25,6 @@ import com.mt.saga.domain.model.task.confirm_order_payment_task.ConfirmOrderPaym
 import com.mt.saga.domain.model.task.create_order_task.CreateOrderTask;
 import com.mt.saga.domain.model.task.recycle_order_task.RecycleOrderTask;
 import com.mt.saga.domain.model.task.reserve_order_task.ReserveOrderTask;
-import com.mt.saga.port.adapter.http.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -31,6 +37,7 @@ import org.springframework.statemachine.config.StateMachineBuilder;
 import org.springframework.statemachine.guard.Guard;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -173,7 +180,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
             // increase order storage
             CompletableFuture<Void> increaseOrderStorageFuture = CompletableFuture.runAsync(() -> {
                         List<PatchCommand> patchCommands = PatchCommand.buildRollbackCommand(DomainRegistry.getProductService().getReserveOrderPatchCommands(machineCommand.getProductList()));
-                DomainRegistry.getProductService().updateProductStorage(patchCommands, task.getTaskId());
+                        DomainRegistry.getProductService().updateProductStorage(patchCommands, task.getTaskId());
                     }, customExecutor
             );
 
@@ -337,129 +344,16 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
             CreateOrderTask bizTx = context.getExtendedState().get(TX_TASK, CreateOrderTask.class);
             List<RuntimeException> exs = new ArrayList<>();
             if (bizTx == null) return false;
+            Set<String> collect = command.getProductList().stream().map(CartDetail::getCartId).collect(Collectors.toSet());
             log.info("start of prepareNewOrder of {}", command.getOrderId());
-            // validate product info
-            CompletableFuture<Boolean> validateResultFuture = CompletableFuture.supplyAsync(() ->
-                    DomainRegistry.getProductService().validateOrderedProduct(command.getProductList()), customExecutor
-            );
-
-            // generate payment QR link
-            CompletableFuture<String> paymentQRLinkFuture = CompletableFuture.supplyAsync(() ->
-                    DomainRegistry.getPaymentService().generatePaymentLink(command.getOrderId(), bizTx.getTaskId()), customExecutor
-            );
-
-            // decrease order storage
-            CompletableFuture<Void> decreaseOrderStorageFuture = CompletableFuture.runAsync(() ->
-                    DomainRegistry.getProductService().updateProductStorage(DomainRegistry.getProductService().getReserveOrderPatchCommands(command.getProductList()), bizTx.getTaskId()), customExecutor
-            );
-
-            // clear cart
-            CompletableFuture<Void> clearCartFuture = CompletableFuture.runAsync(() -> {
-                        Set<String> collect = command.getProductList().stream().map(CartDetail::getCartId).collect(Collectors.toSet());
-                        DomainRegistry.getCartService().clearCart(command.getUserId(), collect, bizTx.getTaskId());
-                    }, customExecutor
-            );
-
-            String paymentLink = null;
-            try {
-                paymentLink = paymentQRLinkFuture.get();
-                bizTx.getGeneratePaymentLinkSubTask().setResults(paymentLink);
-                bizTx.getGeneratePaymentLinkSubTask().setStatus(SubTaskStatus.COMPLETED);
-            } catch (InterruptedException | ExecutionException e) {
-                bizTx.getGeneratePaymentLinkSubTask().setStatus(SubTaskStatus.FAILED);
-                if (e instanceof InterruptedException) {
-                    log.warn("thread was interrupted", e);
-                    context.getStateMachine().setStateMachineError(e);
-                    Thread.currentThread().interrupt();
-                } else {
-                    exs.add(new PaymentQRLinkGenerationException(e));
-                }
-            }
-            try {
-                Boolean aBoolean = validateResultFuture.get();
-                bizTx.getValidateOrderSubTask().setResult(aBoolean);
-                if (aBoolean.compareTo(Boolean.TRUE) == 0) {
-                    bizTx.getValidateOrderSubTask().setResult(true);
-                    bizTx.getValidateOrderSubTask().setStatus(SubTaskStatus.COMPLETED);
-                } else {
-                    bizTx.getValidateOrderSubTask().setResult(false);
-                    exs.add(new BizOrderInvalidException());
-                    bizTx.getValidateOrderSubTask().setStatus(SubTaskStatus.FAILED);
-                }
-            } catch (InterruptedException | ExecutionException e) {
-                bizTx.getValidateOrderSubTask().setStatus(SubTaskStatus.FAILED);
-                if (e instanceof InterruptedException) {
-                    log.warn("thread was interrupted", e);
-                    context.getStateMachine().setStateMachineError(e);
-                    Thread.currentThread().interrupt();
-                } else {
-                    exs.add(new BizOrderValidationException(e));
-                }
-            }
-            try {
-                decreaseOrderStorageFuture.get();
-                bizTx.setDecreaseOrderStorageSubTaskStatus(SubTaskStatus.COMPLETED);
-            } catch (InterruptedException | ExecutionException e) {
-                bizTx.setDecreaseOrderStorageSubTaskStatus(SubTaskStatus.FAILED);
-                if (e instanceof InterruptedException) {
-                    log.warn("thread was interrupted", e);
-                    context.getStateMachine().setStateMachineError(e);
-                    Thread.currentThread().interrupt();
-                } else {
-                    exs.add(new BizOrderStorageDecreaseException(e));
-                }
-            }
-            try {
-                clearCartFuture.get();
-                bizTx.setRemoveItemsFromCartSubTaskStatus(SubTaskStatus.COMPLETED);
-            } catch (InterruptedException | ExecutionException e) {
-                bizTx.setRemoveItemsFromCartSubTaskStatus(SubTaskStatus.FAILED);
-                if (e instanceof InterruptedException) {
-                    log.warn("thread was interrupted", e);
-                    context.getStateMachine().setStateMachineError(e);
-                    Thread.currentThread().interrupt();
-                } else {
-                    exs.add(new CartClearException(e));
-                }
-            }
-
-
-            if (exs.size() > 0) {
-                markCreateTaskAs(context, TaskStatus.FAILED);
-                if (exs.size() > 1) {
-                    context.getStateMachine().setStateMachineError(new MultipleStateMachineException(exs));
-                } else {
-                    context.getStateMachine().setStateMachineError(exs.get(0));
-                }
-                return false;
-            }
-
-            // update order
-            String finalPaymentLink = paymentLink;
-            CompletableFuture<Void> updateOrderFuture = CompletableFuture.runAsync(() ->
-                    DomainRegistry.getOrderService().createNewOrder(finalPaymentLink, command), customExecutor
-            );
-            try {
-                updateOrderFuture.get();
-                bizTx.getCreateOrderSubTask().setStatus(SubTaskStatus.COMPLETED);
-            } catch (ExecutionException ex) {
-                bizTx.getCreateOrderSubTask().setStatus(SubTaskStatus.FAILED);
-                markCreateTaskAs(context, TaskStatus.FAILED);
-                if (updateOrderFuture.isCompletedExceptionally())
-                    context.getStateMachine().setStateMachineError(new BizOrderUpdateException(ex));
-                return false;
-            } catch (InterruptedException e) {
-                bizTx.getCreateOrderSubTask().setStatus(SubTaskStatus.FAILED);
-                markCreateTaskAs(context, TaskStatus.FAILED);
-                log.warn("thread was interrupted", e);
-                context.getStateMachine().setStateMachineError(e);
-                Thread.currentThread().interrupt();
-                return false;
-            }
-            markCreateTaskAs(context, TaskStatus.COMPLETED);
+            DomainEventPublisher.instance().publish(new ValidateProductEvent(command.getProductList()));
+            DomainEventPublisher.instance().publish(new GeneratePaymentQRLinkEvent(command.getOrderId(), bizTx.getChangeId()));
+            DomainEventPublisher.instance().publish(new DecreaseOrderStorageEvent(DomainRegistry.getProductService().getReserveOrderPatchCommands(command.getProductList()), bizTx.getChangeId()));
+            DomainEventPublisher.instance().publish(new ClearCartEvent(command.getUserId(), collect, bizTx.getChangeId()));
             return true;
         };
     }
+
 
     private Guard<BizOrderStatus, BizOrderEvent> reserveOrderTx() {
         return context -> {
@@ -642,7 +536,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
         log.info("mark task as {}", txStatus);
         CreateOrderTask o = (CreateOrderTask) context.getExtendedState().getVariables().get(TX_TASK);
         o.setTaskStatus(txStatus);
-        DomainRegistry.getCreateOrderTaskRepository().add(o);
+        DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(o);
     }
 
     private void markRecycleTaskAs(StateContext<BizOrderStatus, BizOrderEvent> context, TaskStatus txStatus) {
@@ -674,6 +568,8 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
     }
 
     @Override
+    @SubscribeForEvent
+    @Transactional
     public void handleEvent(OrderOperationEvent event) {
         StateMachine<BizOrderStatus, BizOrderEvent> stateMachine = buildMachine(event.getOrderState());
         stateMachine.getExtendedState().getVariables().put(BIZ_ORDER, event);
