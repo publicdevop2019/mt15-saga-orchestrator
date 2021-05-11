@@ -40,7 +40,7 @@ public class CreateOrderTaskScheduler {
     @Qualifier("CustomPool")
     private TaskExecutor customExecutor;
 
-    @Scheduled(fixedRateString = "${fixedRate.in.milliseconds.taskRollback}")
+//    @Scheduled(fixedRateString = "${fixedRate.in.milliseconds.taskRollback}")
     public void rollbackTask() {
         log.debug("expired create order tasks scanning started");
         Date from = Date.from(Instant.ofEpochMilli(Instant.now().toEpochMilli() - taskExpireAfter * 60 * 1000));

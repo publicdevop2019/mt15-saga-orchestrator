@@ -1,9 +1,13 @@
 package com.mt.saga.domain.model.order_state_machine.event.create_new_order;
 
 import com.mt.common.domain.model.domain_event.DomainEvent;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.Set;
-
+@Getter
+@Setter
 public class ClearCartEvent extends DomainEvent {
     public static String CREATE_NEW_ORDER = "CREATE_NEW_ORDER_COMMAND";
     private String userId;

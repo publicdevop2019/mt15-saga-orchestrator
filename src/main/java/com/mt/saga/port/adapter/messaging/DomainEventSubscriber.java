@@ -49,7 +49,7 @@ public class DomainEventSubscriber {
                 CreateNewOrderResultEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), CreateNewOrderResultEvent.class);
                 ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
             }
-        }, profileAppName);
+        }, CREATE_NEW_ORDER_REPLY);
     }
 
     @EventListener(ApplicationReadyEvent.class)
