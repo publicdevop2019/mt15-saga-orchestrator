@@ -348,7 +348,12 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
             log.info("start of prepareNewOrder of {}", command.getOrderId());
             DomainEventPublisher.instance().publish(new ValidateProductEvent(command.getProductList()));
             DomainEventPublisher.instance().publish(new GeneratePaymentQRLinkEvent(command.getOrderId(), bizTx.getChangeId()));
-            DomainEventPublisher.instance().publish(new DecreaseOrderStorageEvent(DomainRegistry.getProductService().getReserveOrderPatchCommands(command.getProductList()), bizTx.getChangeId()));
+            DomainEventPublisher.instance().publish(
+                    new DecreaseOrderStorageEvent(
+                            DomainRegistry.getProductService().getReserveOrderPatchCommands(command.getProductList()),
+                            bizTx.getChangeId(),
+                            bizTx.getId()
+                            ));
             DomainEventPublisher.instance().publish(new ClearCartEvent(command.getUserId(), collect, bizTx.getChangeId()));
             return true;
         };

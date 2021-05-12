@@ -14,10 +14,12 @@ import static com.mt.saga.domain.model.order_state_machine.event.create_new_orde
 public class DecreaseOrderStorageEvent extends DomainEvent {
     private List<PatchCommand> skuCommands;
     private String changeId;
+    private long taskId;
 
-    public DecreaseOrderStorageEvent(List<PatchCommand> reserveOrderPatchCommands, String taskId) {
+    public DecreaseOrderStorageEvent(List<PatchCommand> reserveOrderPatchCommands, String changeId,long taskId) {
         skuCommands = reserveOrderPatchCommands;
-        changeId = taskId;
+        this.changeId = changeId;
+        this.taskId = taskId;
         setInternal(false);
         setTopic(CREATE_NEW_ORDER);
         setName("DECREASE_SKU");

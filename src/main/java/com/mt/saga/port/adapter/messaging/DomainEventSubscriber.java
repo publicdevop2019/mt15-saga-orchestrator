@@ -55,7 +55,7 @@ public class DomainEventSubscriber {
     @EventListener(ApplicationReadyEvent.class)
     private void listener4() {
         CommonDomainRegistry.getEventStreamService().subscribe(mallAppName, false, TASK_UPDATE_QUEUE_NAME, (event) -> {
-            if (DecreaseOrderStorageResultEvent.class.getName().equals(event.getName())) {
+            if ("DECREASE_REPLY".equals(event.getName())) {
                 log.debug("handling event with id {}", event.getId());
                 DecreaseOrderStorageResultEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), DecreaseOrderStorageResultEvent.class);
                 ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
