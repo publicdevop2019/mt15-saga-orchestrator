@@ -83,7 +83,7 @@ public abstract class ProductService {
         return "/" + e.getSkuId() + "/" + fieldName;
     }
 
-    public boolean validateProducts(ProductsSummary productsSummary, List<CartDetail> orderItems) {
+    protected boolean validateProducts(ProductsSummary productsSummary, List<CartDetail> orderItems) {
         return orderItems.stream().noneMatch(command -> {
             Optional<ProductsSummary.ProductAdminCardRepresentation> byId = productsSummary.getData().stream().filter(e -> e.getId().equals(command.getProductId())).findFirst();
             //validate product match

@@ -12,7 +12,6 @@ import java.util.List;
 
 @Data
 public class OrderOperationEvent extends DomainEvent {
-    public static final String TOPIC_ORDER_COMMAND = "ORDER_COMMAND";
     private String orderId;
     private String userId;
     private String txId;
@@ -29,7 +28,6 @@ public class OrderOperationEvent extends DomainEvent {
 
     public OrderOperationEvent() {
         setInternal(false);
-        setTopic(TOPIC_ORDER_COMMAND);
     }
 
     public enum EventName {

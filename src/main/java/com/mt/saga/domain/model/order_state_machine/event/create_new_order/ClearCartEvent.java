@@ -9,7 +9,6 @@ import java.util.Set;
 @Getter
 @Setter
 public class ClearCartEvent extends DomainEvent {
-    public static String CREATE_NEW_ORDER = "CREATE_NEW_ORDER_COMMAND";
     private String userId;
     private Set<String> ids;
     private String changeId;
@@ -19,6 +18,6 @@ public class ClearCartEvent extends DomainEvent {
         this.ids = collect;
         this.changeId = changeId;
         setInternal(false);
-        setTopic(CREATE_NEW_ORDER);
+        setTopic("clear_cart_event");
     }
 }

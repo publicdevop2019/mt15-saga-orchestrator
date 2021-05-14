@@ -11,9 +11,7 @@ import com.mt.saga.domain.model.order_state_machine.event.OrderOperationEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.ClearCartEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.DecreaseOrderStorageEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.GeneratePaymentQRLinkEvent;
-import com.mt.saga.domain.model.order_state_machine.event.create_new_order.ValidateProductEvent;
 import com.mt.saga.domain.model.order_state_machine.exception.*;
-import com.mt.saga.domain.model.order_state_machine.order.AppCreateBizOrderCommand;
 import com.mt.saga.domain.model.order_state_machine.order.BizOrderEvent;
 import com.mt.saga.domain.model.order_state_machine.order.BizOrderStatus;
 import com.mt.saga.domain.model.order_state_machine.order.CartDetail;
@@ -342,19 +340,21 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
         return context -> {
             OrderOperationEvent command = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
             CreateOrderTask bizTx = context.getExtendedState().get(TX_TASK, CreateOrderTask.class);
-            List<RuntimeException> exs = new ArrayList<>();
-            if (bizTx == null) return false;
             Set<String> collect = command.getProductList().stream().map(CartDetail::getCartId).collect(Collectors.toSet());
             log.info("start of prepareNewOrder of {}", command.getOrderId());
-            DomainEventPublisher.instance().publish(new ValidateProductEvent(command.getProductList()));
+            boolean b = DomainRegistry.getProductService().validateOrderedProduct(command.getProductList());
+            if (!b)
+                throw new BizOrderInvalidException();
+            bizTx.getValidateOrderSubTask().setStatus(SubTaskStatus.COMPLETED);
             DomainEventPublisher.instance().publish(new GeneratePaymentQRLinkEvent(command.getOrderId(), bizTx.getChangeId()));
             DomainEventPublisher.instance().publish(
                     new DecreaseOrderStorageEvent(
                             DomainRegistry.getProductService().getReserveOrderPatchCommands(command.getProductList()),
                             bizTx.getChangeId(),
                             bizTx.getId()
-                            ));
+                    ));
             DomainEventPublisher.instance().publish(new ClearCartEvent(command.getUserId(), collect, bizTx.getChangeId()));
+            DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(bizTx);
             return true;
         };
     }

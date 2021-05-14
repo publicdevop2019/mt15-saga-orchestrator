@@ -5,7 +5,6 @@ import com.mt.saga.domain.model.order_state_machine.order.AppCreateBizOrderComma
 import lombok.Getter;
 import lombok.Setter;
 
-import static com.mt.saga.domain.model.order_state_machine.event.create_new_order.ClearCartEvent.CREATE_NEW_ORDER;
 @Getter
 @Setter
 public class CreateNewOrderEvent extends DomainEvent {
@@ -16,6 +15,6 @@ public class CreateNewOrderEvent extends DomainEvent {
         changeId = deserialize1;
         command = paymentLink;
         setInternal(false);
-        setTopic(CREATE_NEW_ORDER);
+        setTopic("create_new_order_event");
     }
 }

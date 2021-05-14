@@ -128,18 +128,4 @@ public class TaskApplicationService {
             DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(e);
         });
     }
-
-    @Transactional
-    public void updateCreateNewOrderTask(ValidateProductResultEvent deserialize) {
-        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().findByIdLocked(deserialize.getTaskId());
-        byIdLocked.ifPresent(e -> {
-            if (deserialize.isSuccess()) {
-                e.getValidateOrderSubTask().setStatus(SubTaskStatus.COMPLETED);
-            } else {
-                e.getValidateOrderSubTask().setStatus(SubTaskStatus.FAILED);
-            }
-            e.checkAllSubTaskStatus();
-            DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(e);
-        });
-    }
 }
