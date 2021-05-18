@@ -7,7 +7,7 @@ import com.mt.saga.appliction.ApplicationServiceRegistry;
 import com.mt.saga.appliction.order_state_machine.OrderStateMachineApplicationService;
 import com.mt.saga.domain.DomainRegistry;
 import com.mt.saga.domain.model.order_state_machine.OrderStateMachineBuilder;
-import com.mt.saga.domain.model.order_state_machine.event.OrderOperationEvent;
+import com.mt.saga.domain.model.order_state_machine.event.UserPlaceOrderEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.ClearCartEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.DecreaseOrderStorageEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.GeneratePaymentQRLinkEvent;
@@ -172,7 +172,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
 
     private Guard<BizOrderStatus, BizOrderEvent> recycleOrder() {
         return context -> {
-            OrderOperationEvent machineCommand = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
+            UserPlaceOrderEvent machineCommand = context.getExtendedState().get(BIZ_ORDER, UserPlaceOrderEvent.class);
             log.info("start of recycle order with id {}", machineCommand.getOrderId());
             RecycleOrderTask task = context.getExtendedState().get(TX_TASK, RecycleOrderTask.class);
             // increase order storage
@@ -240,7 +240,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
                                 @Override
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
-                                    OrderOperationEvent customerOrder = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
+                                    UserPlaceOrderEvent customerOrder = context.getExtendedState().get(BIZ_ORDER, UserPlaceOrderEvent.class);
                                     CreateOrderTask bizTx = ApplicationServiceRegistry.getTaskApplicationService().createCreateOrderTask(customerOrder);
                                     context.getExtendedState().getVariables().put(TX_TASK, bizTx);
                                 }
@@ -257,7 +257,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
                                 @Override
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
-                                    OrderOperationEvent customerOrder = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
+                                    UserPlaceOrderEvent customerOrder = context.getExtendedState().get(BIZ_ORDER, UserPlaceOrderEvent.class);
                                     RecycleOrderTask task = ApplicationServiceRegistry.getTaskApplicationService().createRecycleOrderTask(customerOrder);
                                     context.getExtendedState().getVariables().put(TX_TASK, task);
                                 }
@@ -274,7 +274,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
                                 @Override
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
-                                    OrderOperationEvent customerOrder = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
+                                    UserPlaceOrderEvent customerOrder = context.getExtendedState().get(BIZ_ORDER, UserPlaceOrderEvent.class);
                                     ReserveOrderTask task = ApplicationServiceRegistry.getTaskApplicationService().createReserveOrderTask(customerOrder);
                                     context.getExtendedState().getVariables().put(TX_TASK, task);
                                 }
@@ -291,7 +291,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
                                 @Override
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
-                                    OrderOperationEvent customerOrder = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
+                                    UserPlaceOrderEvent customerOrder = context.getExtendedState().get(BIZ_ORDER, UserPlaceOrderEvent.class);
                                     ConfirmOrderPaymentTask task = ApplicationServiceRegistry.getTaskApplicationService().createConfirmOrderPaymentTask(customerOrder);
                                     context.getExtendedState().getVariables().put(TX_TASK, task);
                                 }
@@ -308,7 +308,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
                                 @Override
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
-                                    OrderOperationEvent customerOrder = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
+                                    UserPlaceOrderEvent customerOrder = context.getExtendedState().get(BIZ_ORDER, UserPlaceOrderEvent.class);
                                     ConcludeOrderTask task = ApplicationServiceRegistry.getTaskApplicationService().createConcludeOrderTask(customerOrder);
                                     context.getExtendedState().getVariables().put(TX_TASK, task);
                                 }
@@ -324,7 +324,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
     private Action<BizOrderStatus, BizOrderEvent> concludeOrderTask() {
         return context -> CompletableFuture.runAsync(() -> {
                     log.info("start of auto conclude");
-                    OrderOperationEvent bizOrder = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
+                    UserPlaceOrderEvent bizOrder = context.getExtendedState().get(BIZ_ORDER, UserPlaceOrderEvent.class);
                     bizOrder.setBizOrderEvent(BizOrderEvent.CONFIRM_ORDER);
                     bizOrder.setPrepareEvent(BizOrderEvent.PREPARE_CONFIRM_ORDER);
                     bizOrder.setTxId(UUID.randomUUID().toString());
@@ -338,7 +338,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
 
     private Guard<BizOrderStatus, BizOrderEvent> createOrderTx() {
         return context -> {
-            OrderOperationEvent command = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
+            UserPlaceOrderEvent command = context.getExtendedState().get(BIZ_ORDER, UserPlaceOrderEvent.class);
             CreateOrderTask bizTx = context.getExtendedState().get(TX_TASK, CreateOrderTask.class);
             Set<String> collect = command.getProductList().stream().map(CartDetail::getCartId).collect(Collectors.toSet());
             log.info("start of prepareNewOrder of {}", command.getOrderId());
@@ -346,7 +346,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
             if (!b)
                 throw new BizOrderInvalidException();
             bizTx.getValidateOrderSubTask().setStatus(SubTaskStatus.COMPLETED);
-            DomainEventPublisher.instance().publish(new GeneratePaymentQRLinkEvent(command.getOrderId(), bizTx.getChangeId()));
+            DomainEventPublisher.instance().publish(new GeneratePaymentQRLinkEvent(command.getOrderId(), bizTx.getChangeId(),bizTx.getId().toString()));
             DomainEventPublisher.instance().publish(
                     new DecreaseOrderStorageEvent(
                             DomainRegistry.getProductService().getReserveOrderPatchCommands(command.getProductList()),
@@ -363,7 +363,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
     private Guard<BizOrderStatus, BizOrderEvent> reserveOrderTx() {
         return context -> {
             log.info("start of reserveOrderTx");
-            OrderOperationEvent stateMachineCommand = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
+            UserPlaceOrderEvent stateMachineCommand = context.getExtendedState().get(BIZ_ORDER, UserPlaceOrderEvent.class);
             ReserveOrderTask task = context.getExtendedState().get(TX_TASK, ReserveOrderTask.class);
 
             // decrease order storage
@@ -425,7 +425,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
 
     private Guard<BizOrderStatus, BizOrderEvent> confirmOrderTx() {
         return context -> {
-            OrderOperationEvent machineCommand = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
+            UserPlaceOrderEvent machineCommand = context.getExtendedState().get(BIZ_ORDER, UserPlaceOrderEvent.class);
             ConcludeOrderTask task = context.getExtendedState().get(TX_TASK, ConcludeOrderTask.class);
             log.info("start of decreaseActualStorage for {}", machineCommand.getOrderId());
             // decrease actual storage
@@ -481,7 +481,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
     private Guard<BizOrderStatus, BizOrderEvent> confirmPaymentTx() {
         return context -> {
             log.info("start of updatePaymentStatus");
-            OrderOperationEvent bizOrder = context.getExtendedState().get(BIZ_ORDER, OrderOperationEvent.class);
+            UserPlaceOrderEvent bizOrder = context.getExtendedState().get(BIZ_ORDER, UserPlaceOrderEvent.class);
             ConfirmOrderPaymentTask task = context.getExtendedState().get(TX_TASK, ConfirmOrderPaymentTask.class);
 
             // confirm payment
@@ -573,9 +573,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
     }
 
     @Override
-    @SubscribeForEvent
-    @Transactional
-    public void handleEvent(OrderOperationEvent event) {
+    public void handleEvent(UserPlaceOrderEvent event) {
         StateMachine<BizOrderStatus, BizOrderEvent> stateMachine = buildMachine(event.getOrderState());
         stateMachine.getExtendedState().getVariables().put(BIZ_ORDER, event);
         if (event.getPrepareEvent() != null) {

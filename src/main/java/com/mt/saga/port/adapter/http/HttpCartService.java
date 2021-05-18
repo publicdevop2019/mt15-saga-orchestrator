@@ -26,7 +26,7 @@ public class HttpCartService implements CartService {
 
     @Value("${mt.url.profile.change}")
     private String changeUrl;
-    @Value("${mt.discovery.profile}")
+    @Value("${mt.app.name.mt2}")
     private String appName;
     @Autowired
     private EurekaHelper eurekaHelper;

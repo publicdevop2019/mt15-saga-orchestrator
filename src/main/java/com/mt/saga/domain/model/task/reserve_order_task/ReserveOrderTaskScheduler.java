@@ -2,7 +2,7 @@ package com.mt.saga.domain.model.task.reserve_order_task;
 
 import com.mt.common.domain.CommonDomainRegistry;
 import com.mt.saga.domain.DomainRegistry;
-import com.mt.saga.domain.model.order_state_machine.event.OrderOperationEvent;
+import com.mt.saga.domain.model.order_state_machine.event.UserPlaceOrderEvent;
 import com.mt.saga.domain.model.task.SubTaskStatus;
 import com.mt.saga.domain.model.task.TaskStatus;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
@@ -38,7 +37,7 @@ public class ReserveOrderTaskScheduler {
     @Qualifier("CustomPool")
     private TaskExecutor customExecutor;
 
-    @Scheduled(fixedRateString = "${fixedRate.in.milliseconds.taskRollback}")
+//    @Scheduled(fixedRateString = "${fixedRate.in.milliseconds.taskRollback}")
     public void rollbackTask() {
         log.debug("expired reserve tasks scanning started");
         Date from = Date.from(Instant.ofEpochMilli(Instant.now().toEpochMilli() - taskExpireAfter * 60 * 1000));
@@ -74,7 +73,7 @@ public class ReserveOrderTaskScheduler {
     }
 
     private void cancelReserveTask(ReserveOrderTask bizTx) {
-        OrderOperationEvent command = CommonDomainRegistry.getCustomObjectSerializer().deserialize(bizTx.getCreateBizStateMachineCommand(), OrderOperationEvent.class);
+        UserPlaceOrderEvent command = CommonDomainRegistry.getCustomObjectSerializer().deserialize(bizTx.getCreateBizStateMachineCommand(), UserPlaceOrderEvent.class);
         log.info("start of cancel task of {} with {}", bizTx.getTaskId(), bizTx.getCancelTaskId());
 
         // cancel order storage change

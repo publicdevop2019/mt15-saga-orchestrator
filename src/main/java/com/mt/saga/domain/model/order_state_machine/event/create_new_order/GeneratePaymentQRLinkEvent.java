@@ -9,10 +9,12 @@ import lombok.Setter;
 public class GeneratePaymentQRLinkEvent extends DomainEvent {
     private String orderId;
     private String changeId;
+    private String taskId;
 
-    public GeneratePaymentQRLinkEvent(String orderId, String taskId) {
+    public GeneratePaymentQRLinkEvent(String orderId, String changeId, String taskId) {
         this.orderId = orderId;
-        changeId = taskId;
+        this.changeId = changeId;
+        this.taskId = taskId;
         setInternal(false);
         setTopic("generate_order_payment_link_event");
     }

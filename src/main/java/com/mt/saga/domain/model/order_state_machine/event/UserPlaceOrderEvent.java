@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Data
-public class OrderOperationEvent extends DomainEvent {
+public class UserPlaceOrderEvent extends DomainEvent {
     private String orderId;
     private String userId;
     private String txId;
@@ -26,7 +26,7 @@ public class OrderOperationEvent extends DomainEvent {
     private BigDecimal paymentAmt;
     private Integer version;
 
-    public OrderOperationEvent() {
+    public UserPlaceOrderEvent() {
         setInternal(false);
     }
 

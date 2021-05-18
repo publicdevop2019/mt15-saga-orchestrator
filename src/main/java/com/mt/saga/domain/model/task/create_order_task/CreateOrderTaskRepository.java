@@ -9,5 +9,5 @@ public interface CreateOrderTaskRepository {
 
     void createOrUpdate(CreateOrderTask createOrderTask);
 
-    Optional<CreateOrderTask> findByIdLocked(Long id);
+    Optional<CreateOrderTask> getById(Long id);
 }

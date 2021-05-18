@@ -2,7 +2,7 @@ package com.mt.saga.port.adapter.messaging;
 
 import com.mt.common.domain.CommonDomainRegistry;
 import com.mt.saga.appliction.ApplicationServiceRegistry;
-import com.mt.saga.domain.model.order_state_machine.event.OrderOperationEvent;
+import com.mt.saga.domain.model.order_state_machine.event.UserPlaceOrderEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,14 +22,14 @@ public class DomainEventSubscriber {
     private String profileAppName;
     @Value("${mt.app.name.mt3}")
     private String mallAppName;
-    @Value("${mt.app.name.mt5}")
+    @Value("${mt.app.name.mt6}")
     private String paymentAppName;
 
     @EventListener(ApplicationReadyEvent.class)
     private void listener() {
         CommonDomainRegistry.getEventStreamService().subscribe(profileAppName, false, SAGA_ORDER_QUEUE_NAME, (event) -> {
             log.debug("handling event with id {}", event.getId());
-            OrderOperationEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), OrderOperationEvent.class);
+            UserPlaceOrderEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), UserPlaceOrderEvent.class);
             ApplicationServiceRegistry.getStateMachineApplicationService().start(deserialize);
         }, "order_operation_event");
     }
@@ -47,7 +47,7 @@ public class DomainEventSubscriber {
     private void listener3() {
         CommonDomainRegistry.getEventStreamService().subscribe(profileAppName, false, TASK_UPDATE_QUEUE_NAME3, (event) -> {
             log.debug("handling event with id {}", event.getId());
-            CreateNewOrderResultEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), CreateNewOrderResultEvent.class);
+            CreateNewOrderReplyEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), CreateNewOrderReplyEvent.class);
             ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
         }, "create_new_order_reply_event");
     }

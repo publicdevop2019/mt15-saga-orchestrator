@@ -37,7 +37,7 @@ public class HttpProductService extends ProductService {
     @Autowired
     private RestTemplate restTemplate;
 
-    @Value("${mt.discovery.mall}")
+    @Value("${mt.app.name.mt3}")
     private String appName;
 
     @Override

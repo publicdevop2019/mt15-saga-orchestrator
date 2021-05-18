@@ -4,9 +4,8 @@ import com.mt.common.domain.CommonDomainRegistry;
 import com.mt.common.domain.model.domain_event.DomainEventPublisher;
 import com.mt.common.domain.model.domain_event.SubscribeForEvent;
 import com.mt.saga.domain.DomainRegistry;
-import com.mt.saga.domain.model.order_state_machine.event.OrderOperationEvent;
+import com.mt.saga.domain.model.order_state_machine.event.UserPlaceOrderEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.*;
-import com.mt.saga.domain.model.order_state_machine.order.AppCreateBizOrderCommand;
 import com.mt.saga.domain.model.task.SubTaskStatus;
 import com.mt.saga.domain.model.task.conclude_order_task.ConcludeOrderTask;
 import com.mt.saga.domain.model.task.confirm_order_payment_task.ConfirmOrderPaymentTask;
@@ -24,7 +23,7 @@ import java.util.Optional;
 @Service
 public class TaskApplicationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public CreateOrderTask createCreateOrderTask(OrderOperationEvent customerOrder) {
+    public CreateOrderTask createCreateOrderTask(UserPlaceOrderEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
         CreateOrderTask createOrderTask = new CreateOrderTask(serialize, customerOrder.getTxId(), customerOrder.getOrderId());
         DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(createOrderTask);
@@ -32,7 +31,7 @@ public class TaskApplicationService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public RecycleOrderTask createRecycleOrderTask(OrderOperationEvent customerOrder) {
+    public RecycleOrderTask createRecycleOrderTask(UserPlaceOrderEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
         RecycleOrderTask recycleOrderTask = new RecycleOrderTask(serialize, customerOrder.getTxId(), customerOrder.getOrderId());
         DomainRegistry.getRecycleOrderTaskRepository().add(recycleOrderTask);
@@ -41,7 +40,7 @@ public class TaskApplicationService {
 
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public ReserveOrderTask createReserveOrderTask(OrderOperationEvent customerOrder) {
+    public ReserveOrderTask createReserveOrderTask(UserPlaceOrderEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
         ReserveOrderTask task = new ReserveOrderTask(serialize, customerOrder.getTxId(), customerOrder.getOrderId());
         DomainRegistry.getReserveOrderTaskRepository().add(task);
@@ -49,7 +48,7 @@ public class TaskApplicationService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public ConfirmOrderPaymentTask createConfirmOrderPaymentTask(OrderOperationEvent customerOrder) {
+    public ConfirmOrderPaymentTask createConfirmOrderPaymentTask(UserPlaceOrderEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
         ConfirmOrderPaymentTask task = new ConfirmOrderPaymentTask(serialize, customerOrder.getTxId(), customerOrder.getOrderId());
         DomainRegistry.getConfirmOrderPaymentTaskRepository().add(task);
@@ -57,7 +56,7 @@ public class TaskApplicationService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public ConcludeOrderTask createConcludeOrderTask(OrderOperationEvent customerOrder) {
+    public ConcludeOrderTask createConcludeOrderTask(UserPlaceOrderEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
         ConcludeOrderTask task = new ConcludeOrderTask(serialize, customerOrder.getTxId(), customerOrder.getOrderId());
         DomainRegistry.getConcludeOrderTaskRepository().add(task);
@@ -67,7 +66,7 @@ public class TaskApplicationService {
     @Transactional
 
     public void updateCreateNewOrderTask(ClearCartResultEvent deserialize) {
-        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().findByIdLocked(deserialize.getTaskId());
+        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.isSuccess()) {
                 e.setRemoveItemsFromCartSubTaskStatus(SubTaskStatus.COMPLETED);
@@ -81,7 +80,7 @@ public class TaskApplicationService {
 
     @Transactional
     public void updateCreateNewOrderTask(DecreaseOrderStorageResultEvent deserialize) {
-        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().findByIdLocked(deserialize.getTaskId());
+        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.isSuccess()) {
                 e.setDecreaseOrderStorageSubTaskStatus(SubTaskStatus.COMPLETED);
@@ -96,15 +95,15 @@ public class TaskApplicationService {
     @Transactional
     @SubscribeForEvent
     public void updateCreateNewOrderTask(GeneratePaymentQRLinkResultEvent deserialize) {
-        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().findByIdLocked(deserialize.getTaskId());
+        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
-            if (deserialize.isSuccess()) {
+            if (deserialize.getPaymentLink() != null && !deserialize.getPaymentLink().isBlank()) {
+                e.getGeneratePaymentLinkSubTask().setResults(deserialize.getPaymentLink());
                 e.getGeneratePaymentLinkSubTask().setStatus(SubTaskStatus.COMPLETED);
                 String createBizStateMachineCommand = e.getCreateBizStateMachineCommand();
-                OrderOperationEvent deserialize1 = CommonDomainRegistry.getCustomObjectSerializer().deserialize(createBizStateMachineCommand, OrderOperationEvent.class);
-                AppCreateBizOrderCommand appCreateBizOrderCommand = DomainRegistry.getOrderService().getAppCreateBizOrderCommand(deserialize1, deserialize.getPaymentLink());
-                DomainEventPublisher.instance().publish(new CreateNewOrderEvent(appCreateBizOrderCommand, deserialize1.getTxId()));
-                e.getGeneratePaymentLinkSubTask().setResults(deserialize.getPaymentLink());
+                UserPlaceOrderEvent placeOrderEvent = CommonDomainRegistry.getCustomObjectSerializer().deserialize(createBizStateMachineCommand, UserPlaceOrderEvent.class);
+                CreateNewOrderEvent event = new CreateNewOrderEvent(placeOrderEvent, deserialize.getPaymentLink(), e.getId(),e.getChangeId());
+                DomainEventPublisher.instance().publish(event);
             } else {
                 e.getGeneratePaymentLinkSubTask().setStatus(SubTaskStatus.FAILED);
             }
@@ -114,8 +113,8 @@ public class TaskApplicationService {
     }
 
     @Transactional
-    public void updateCreateNewOrderTask(CreateNewOrderResultEvent deserialize) {
-        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().findByIdLocked(deserialize.getTaskId());
+    public void updateCreateNewOrderTask(CreateNewOrderReplyEvent deserialize) {
+        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.isSuccess()) {
                 e.getCreateOrderSubTask().setStatus(SubTaskStatus.COMPLETED);

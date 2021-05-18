@@ -4,7 +4,7 @@ import com.mt.common.domain.model.domain_event.DomainEvent;
 import lombok.Getter;
 
 @Getter
-public class CreateNewOrderResultEvent extends DomainEvent {
+public class CreateNewOrderReplyEvent extends DomainEvent {
     private boolean success;
     private long taskId;
 

@@ -7,15 +7,20 @@ import com.mt.saga.domain.model.task.TaskName;
 import com.mt.saga.domain.model.task.TaskStatus;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import javax.persistence.*;
 import java.io.Serializable;
+import java.util.Date;
 
 @Entity
 @Table
 @Data
 @NoArgsConstructor
-public class CreateOrderTask extends Auditable implements Serializable {
+public class CreateOrderTask implements Serializable {
     public static final String ENTITY_TX_NAME = "txName";
     public static final String ENTITY_TX_STATUS = "txStatus";
     public static final String ENTITY_REFERENCE_ID = "referenceId";
@@ -50,6 +55,9 @@ public class CreateOrderTask extends Auditable implements Serializable {
     private SubTaskStatus removeItemsFromCartSubTaskStatus = SubTaskStatus.STARTED;
     @Embedded
     private ValidateOrderSubTask validateOrderSubTask;
+    @CreatedDate
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdAt;
 
     public CreateOrderTask(String command, String changeId, String orderId) {
         this.id = CommonDomainRegistry.getUniqueIdGeneratorService().id();

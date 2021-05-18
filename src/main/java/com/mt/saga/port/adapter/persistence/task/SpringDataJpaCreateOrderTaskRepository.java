@@ -28,8 +28,8 @@ public interface SpringDataJpaCreateOrderTaskRepository extends JpaRepository<Cr
     }
 
     @Override
-    default Optional<CreateOrderTask> findByIdLocked(Long id) {
-        return findByIdOptLock(id);
+    default Optional<CreateOrderTask> getById(Long id) {
+        return findById(id);
     }
 
     @Override

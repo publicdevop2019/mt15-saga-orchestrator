@@ -2,9 +2,8 @@ package com.mt.saga.port.adapter.http;
 
 import com.mt.common.domain.model.restful.SumPagedRep;
 import com.mt.common.domain.model.service_discovery.EurekaHelper;
-import com.mt.saga.domain.model.order_state_machine.event.OrderOperationEvent;
-import com.mt.saga.domain.model.order_state_machine.order.AppCreateBizOrderCommand;
-import com.mt.saga.domain.model.order_state_machine.order.BizOrderStatus;
+import com.mt.saga.domain.model.order_state_machine.event.UserPlaceOrderEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.CreateNewOrderEvent;
 import com.mt.saga.domain.model.order_state_machine.order.UpdateBizOrderCommand;
 import com.mt.saga.domain.model.task.OrderService;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +28,7 @@ public class HttpOrderService implements OrderService {
 
     @Value("${mt.url.profile.change}")
     private String changeUrl;
-    @Value("${mt.discovery.profile}")
+    @Value("${mt.app.name.mt2}")
     private String appName;
     @Autowired
     private EurekaHelper eurekaHelper;
@@ -37,7 +36,7 @@ public class HttpOrderService implements OrderService {
     private RestTemplate restTemplate;
 
     @Override
-    public void concludeOrder(OrderOperationEvent command) {
+    public void concludeOrder(UserPlaceOrderEvent command) {
         UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
         updateBizOrderCommand.setActualStorage(true);
         updateBizOrderCommand.setConcluded(true);
@@ -48,7 +47,7 @@ public class HttpOrderService implements OrderService {
     }
 
     @Override
-    public void reservedOrder(OrderOperationEvent command) {
+    public void reservedOrder(UserPlaceOrderEvent command) {
         UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
         updateBizOrderCommand.setOrderStorage(true);
         updateBizOrderCommand.setVersion(command.getVersion());
@@ -58,7 +57,7 @@ public class HttpOrderService implements OrderService {
     }
 
     @Override
-    public void cancelCreateNewOrder(OrderOperationEvent command, String cancelTxId, String txId) {
+    public void cancelCreateNewOrder(UserPlaceOrderEvent command, String cancelTxId, String txId) {
         log.info("start of cancel created order");
         if (hasChange(txId)) {
             UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
@@ -73,7 +72,7 @@ public class HttpOrderService implements OrderService {
     }
 
     @Override
-    public void cancelConcludeOrder(OrderOperationEvent command, String cancelTxId, String txId) {
+    public void cancelConcludeOrder(UserPlaceOrderEvent command, String cancelTxId, String txId) {
         if (hasChange(txId)) {
             UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
             updateBizOrderCommand.setActualStorage(false);
@@ -86,7 +85,7 @@ public class HttpOrderService implements OrderService {
     }
 
     @Override
-    public void cancelReserveOrder(OrderOperationEvent command, String cancelTxId, String txId) {
+    public void cancelReserveOrder(UserPlaceOrderEvent command, String cancelTxId, String txId) {
         if (hasChange(txId)) {
             UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
             updateBizOrderCommand.setPaid(false);
@@ -98,7 +97,7 @@ public class HttpOrderService implements OrderService {
     }
 
     @Override
-    public void cancelRecycleOrder(OrderOperationEvent command, String cancelTxId, String txId) {
+    public void cancelRecycleOrder(UserPlaceOrderEvent command, String cancelTxId, String txId) {
         if (hasChange(txId)) {
             UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
             updateBizOrderCommand.setOrderStorage(true);
@@ -110,7 +109,7 @@ public class HttpOrderService implements OrderService {
     }
 
     @Override
-    public void cancelConfirmPayment(OrderOperationEvent command, String cancelTxId, String txId) {
+    public void cancelConfirmPayment(UserPlaceOrderEvent command, String cancelTxId, String txId) {
         if (hasChange(txId)) {
             UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
             updateBizOrderCommand.setOrderStorage(false);
@@ -122,12 +121,12 @@ public class HttpOrderService implements OrderService {
     }
 
     @Override
-    public void createNewOrder(AppCreateBizOrderCommand command, String changeId) {
+    public void createNewOrder(CreateNewOrderEvent command, String changeId) {
         log.info("starting saveNewOrder");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add(HTTP_HEADER_CHANGE_ID, changeId);
-        HttpEntity<AppCreateBizOrderCommand> hashMapHttpEntity = new HttpEntity<>(command, headers);
+        HttpEntity<CreateNewOrderEvent> hashMapHttpEntity = new HttpEntity<>(command, headers);
         String applicationUrl = eurekaHelper.getApplicationUrl(appName);
         restTemplate.exchange(applicationUrl + orderUrl, HttpMethod.POST, hashMapHttpEntity, String.class);
         log.info("complete saveNewOrder");
@@ -135,7 +134,7 @@ public class HttpOrderService implements OrderService {
 
 
     @Override
-    public void confirmPayment(OrderOperationEvent command) {
+    public void confirmPayment(UserPlaceOrderEvent command) {
         UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
         updateBizOrderCommand.setPaid(true);
         updateBizOrderCommand.setVersion(command.getVersion());
@@ -145,7 +144,7 @@ public class HttpOrderService implements OrderService {
     }
 
     @Override
-    public void recycleOrder(OrderOperationEvent command) {
+    public void recycleOrder(UserPlaceOrderEvent command) {
         UpdateBizOrderCommand updateBizOrderCommand = new UpdateBizOrderCommand();
         updateBizOrderCommand.setOrderStorage(false);
         updateBizOrderCommand.setVersion(command.getVersion());
@@ -154,7 +153,7 @@ public class HttpOrderService implements OrderService {
         updateOrder(command, updateBizOrderCommand, command.getTxId());
     }
 
-    private void updateOrder(OrderOperationEvent machineCommand, UpdateBizOrderCommand command, String changeId) {
+    private void updateOrder(UserPlaceOrderEvent machineCommand, UpdateBizOrderCommand command, String changeId) {
         HttpOrderService.log.info("starting update order to {}", command);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

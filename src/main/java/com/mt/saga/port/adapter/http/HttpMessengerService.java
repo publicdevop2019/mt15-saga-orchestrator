@@ -22,7 +22,7 @@ public class HttpMessengerService implements MessengerService {
     @Value("${mt.url.messenger.notify}")
     private String notifyUrl;
 
-    @Value("${mt.discovery.messenger}")
+    @Value("${mt.app.name.mt4}")
     private String appName;
     @Autowired
     private EurekaHelper eurekaHelper;

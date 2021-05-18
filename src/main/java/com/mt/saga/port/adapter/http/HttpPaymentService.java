@@ -30,7 +30,7 @@ public class HttpPaymentService implements PaymentService {
 
     @Value("${mt.url.payment.change}")
     private String changeUrl;
-    @Value("${mt.discovery.payment}")
+    @Value("${mt.app.name.mt6}")
     private String appName;
 
     @Autowired

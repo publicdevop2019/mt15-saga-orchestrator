@@ -5,7 +5,6 @@ import lombok.Getter;
 
 @Getter
 public class GeneratePaymentQRLinkResultEvent extends DomainEvent {
-    private boolean success;
     private long taskId;
     private String paymentLink;
 

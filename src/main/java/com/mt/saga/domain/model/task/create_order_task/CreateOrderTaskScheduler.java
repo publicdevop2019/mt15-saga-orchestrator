@@ -2,7 +2,7 @@ package com.mt.saga.domain.model.task.create_order_task;
 
 import com.mt.common.domain.CommonDomainRegistry;
 import com.mt.saga.domain.DomainRegistry;
-import com.mt.saga.domain.model.order_state_machine.event.OrderOperationEvent;
+import com.mt.saga.domain.model.order_state_machine.event.UserPlaceOrderEvent;
 import com.mt.saga.domain.model.order_state_machine.order.CartDetail;
 import com.mt.saga.domain.model.task.SubTaskStatus;
 import com.mt.saga.domain.model.task.TaskStatus;
@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
@@ -54,7 +53,7 @@ public class CreateOrderTaskScheduler {
                                 @Override
                                 protected void doInTransactionWithoutResult(TransactionStatus status) {
                                     // read task again make sure it's still valid & apply opt lock
-                                    Optional<CreateOrderTask> byIdOptLock = DomainRegistry.getCreateOrderTaskRepository().findByIdLocked(task.getId());
+                                    Optional<CreateOrderTask> byIdOptLock = DomainRegistry.getCreateOrderTaskRepository().getById(task.getId());
                                     if (byIdOptLock.isPresent()
                                             && byIdOptLock.get().getCreatedAt().compareTo(from) < 0
                                             && (byIdOptLock.get().getTaskStatus().equals(TaskStatus.STARTED) || byIdOptLock.get().getTaskStatus().equals(TaskStatus.FAILED))
@@ -76,7 +75,7 @@ public class CreateOrderTaskScheduler {
     }
 
     private void rollbackCreate(CreateOrderTask bizTx) {
-        OrderOperationEvent command = CommonDomainRegistry.getCustomObjectSerializer().deserialize(bizTx.getCreateBizStateMachineCommand(), OrderOperationEvent.class);
+        UserPlaceOrderEvent command = CommonDomainRegistry.getCustomObjectSerializer().deserialize(bizTx.getCreateBizStateMachineCommand(), UserPlaceOrderEvent.class);
         log.info("start of cancel task of {} with {}", bizTx.getChangeId(), bizTx.getCancelTaskId());
 
         // cancel payment QR link
