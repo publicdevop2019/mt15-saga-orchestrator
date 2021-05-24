@@ -353,7 +353,7 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
                             bizTx.getChangeId(),
                             bizTx.getId()
                     ));
-            DomainEventPublisher.instance().publish(new ClearCartEvent(command.getUserId(), collect, bizTx.getChangeId()));
+            DomainEventPublisher.instance().publish(new ClearCartEvent(command.getUserId(), collect, bizTx.getChangeId(), bizTx.getId()));
             DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(bizTx);
             return true;
         };

@@ -13,15 +13,21 @@ import com.mt.saga.domain.model.task.create_order_task.CreateOrderTask;
 import com.mt.saga.domain.model.task.recycle_order_task.RecycleOrderTask;
 import com.mt.saga.domain.model.task.reserve_order_task.ReserveOrderTask;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 public class TaskApplicationService {
+    @Autowired
+    private RedissonClient redissonClient;
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CreateOrderTask createCreateOrderTask(UserPlaceOrderEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
@@ -64,8 +70,11 @@ public class TaskApplicationService {
     }
 
     @Transactional
-
     public void updateCreateNewOrderTask(ClearCartResultEvent deserialize) {
+        log.debug("before updating task with id {}, acquire lock",deserialize.getTaskId());
+        RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
+        lock.lock(5, TimeUnit.SECONDS);
+        log.debug("lock acquired");
         Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.isSuccess()) {
@@ -80,6 +89,10 @@ public class TaskApplicationService {
 
     @Transactional
     public void updateCreateNewOrderTask(DecreaseOrderStorageResultEvent deserialize) {
+        log.debug("before updating task with id {}, acquire lock",deserialize.getTaskId());
+        RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
+        lock.lock(5, TimeUnit.SECONDS);
+        log.debug("lock acquired");
         Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.isSuccess()) {
@@ -95,6 +108,10 @@ public class TaskApplicationService {
     @Transactional
     @SubscribeForEvent
     public void updateCreateNewOrderTask(GeneratePaymentQRLinkResultEvent deserialize) {
+        log.debug("before updating task with id {}, acquire lock",deserialize.getTaskId());
+        RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
+        lock.lock(5, TimeUnit.SECONDS);
+        log.debug("lock acquired");
         Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.getPaymentLink() != null && !deserialize.getPaymentLink().isBlank()) {
@@ -114,6 +131,10 @@ public class TaskApplicationService {
 
     @Transactional
     public void updateCreateNewOrderTask(CreateNewOrderReplyEvent deserialize) {
+        log.debug("before updating task with id {}, acquire lock",deserialize.getTaskId());
+        RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
+        lock.lock(5, TimeUnit.SECONDS);
+        log.debug("lock acquired");
         Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.isSuccess()) {

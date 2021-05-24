@@ -12,11 +12,13 @@ public class ClearCartEvent extends DomainEvent {
     private String userId;
     private Set<String> ids;
     private String changeId;
+    private long taskId;
 
-    public ClearCartEvent(String userId, Set<String> collect, String changeId) {
+    public ClearCartEvent(String userId, Set<String> collect, String changeId,long taskId) {
         this.userId = userId;
         this.ids = collect;
         this.changeId = changeId;
+        this.taskId=taskId;
         setInternal(false);
         setTopic("clear_cart_event");
     }
