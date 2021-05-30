@@ -1,8 +1,7 @@
 package com.mt.saga.domain.model.task;
 
 import com.mt.saga.domain.model.order_state_machine.event.UserPlaceOrderEvent;
-import com.mt.saga.domain.model.order_state_machine.event.create_new_order.CreateNewOrderEvent;
-import com.mt.saga.domain.model.order_state_machine.order.BizOrderStatus;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.CreateNewOrderEvent;
 
 public interface OrderService {
     void concludeOrder(UserPlaceOrderEvent command);

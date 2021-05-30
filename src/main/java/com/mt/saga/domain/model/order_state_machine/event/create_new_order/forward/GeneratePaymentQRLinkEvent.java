@@ -1,4 +1,4 @@
-package com.mt.saga.domain.model.order_state_machine.event.create_new_order;
+package com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward;
 
 import com.mt.common.domain.model.domain_event.DomainEvent;
 import lombok.Getter;

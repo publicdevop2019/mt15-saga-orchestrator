@@ -3,10 +3,11 @@ package com.mt.saga.port.adapter.messaging;
 import com.mt.common.domain.CommonDomainRegistry;
 import com.mt.saga.appliction.ApplicationServiceRegistry;
 import com.mt.saga.domain.model.order_state_machine.event.UserPlaceOrderEvent;
-import com.mt.saga.domain.model.order_state_machine.event.create_new_order.*;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.ClearCartReplyEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.CreateNewOrderReplyEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.DecreaseOrderStorageReplyEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.GeneratePaymentQRLinkReplyEvent;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RedissonClient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -40,7 +41,7 @@ public class DomainEventSubscriber {
     private void listener2() {
         CommonDomainRegistry.getEventStreamService().subscribe(profileAppName, false, TASK_UPDATE_QUEUE_NAME2, (event) -> {
             log.debug("handling clear_cart_reply_event with id {}", event.getId());
-            ClearCartResultEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), ClearCartResultEvent.class);
+            ClearCartReplyEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), ClearCartReplyEvent.class);
             ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
         }, "clear_cart_reply_event");
     }
@@ -58,7 +59,7 @@ public class DomainEventSubscriber {
     private void listener4() {
         CommonDomainRegistry.getEventStreamService().subscribe(mallAppName, false, TASK_UPDATE_QUEUE_NAME4, (event) -> {
             log.debug("handling decrease_sku_for_order_reply_event with id {}", event.getId());
-            DecreaseOrderStorageResultEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), DecreaseOrderStorageResultEvent.class);
+            DecreaseOrderStorageReplyEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), DecreaseOrderStorageReplyEvent.class);
             ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
         }, "decrease_sku_for_order_reply_event");
     }
@@ -67,7 +68,7 @@ public class DomainEventSubscriber {
     private void listener6() {
         CommonDomainRegistry.getEventStreamService().subscribe(paymentAppName, false, TASK_UPDATE_QUEUE_NAME6, (event) -> {
             log.debug("handling generate_order_payment_link_reply_event with id {}", event.getId());
-            GeneratePaymentQRLinkResultEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), GeneratePaymentQRLinkResultEvent.class);
+            GeneratePaymentQRLinkReplyEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), GeneratePaymentQRLinkReplyEvent.class);
             ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
         }, "generate_order_payment_link_reply_event");
     }

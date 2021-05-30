@@ -5,7 +5,7 @@ import com.mt.common.domain.model.domain_event.DomainEventPublisher;
 import com.mt.common.domain.model.domain_event.SubscribeForEvent;
 import com.mt.saga.domain.DomainRegistry;
 import com.mt.saga.domain.model.order_state_machine.event.UserPlaceOrderEvent;
-import com.mt.saga.domain.model.order_state_machine.event.create_new_order.*;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.*;
 import com.mt.saga.domain.model.task.SubTaskStatus;
 import com.mt.saga.domain.model.task.conclude_order_task.ConcludeOrderTask;
 import com.mt.saga.domain.model.task.confirm_order_payment_task.ConfirmOrderPaymentTask;
@@ -70,7 +70,7 @@ public class TaskApplicationService {
     }
 
     @Transactional
-    public void updateCreateNewOrderTask(ClearCartResultEvent deserialize) {
+    public void updateCreateNewOrderTask(ClearCartReplyEvent deserialize) {
         log.debug("before updating task with id {}, acquire lock",deserialize.getTaskId());
         RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
         lock.lock(5, TimeUnit.SECONDS);
@@ -88,7 +88,7 @@ public class TaskApplicationService {
     }
 
     @Transactional
-    public void updateCreateNewOrderTask(DecreaseOrderStorageResultEvent deserialize) {
+    public void updateCreateNewOrderTask(DecreaseOrderStorageReplyEvent deserialize) {
         log.debug("before updating task with id {}, acquire lock",deserialize.getTaskId());
         RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
         lock.lock(5, TimeUnit.SECONDS);
@@ -107,7 +107,7 @@ public class TaskApplicationService {
 
     @Transactional
     @SubscribeForEvent
-    public void updateCreateNewOrderTask(GeneratePaymentQRLinkResultEvent deserialize) {
+    public void updateCreateNewOrderTask(GeneratePaymentQRLinkReplyEvent deserialize) {
         log.debug("before updating task with id {}, acquire lock",deserialize.getTaskId());
         RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
         lock.lock(5, TimeUnit.SECONDS);
