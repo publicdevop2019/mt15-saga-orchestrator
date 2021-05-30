@@ -6,6 +6,7 @@ import com.mt.common.domain.model.domain_event.SubscribeForEvent;
 import com.mt.saga.domain.DomainRegistry;
 import com.mt.saga.domain.model.order_state_machine.event.UserPlaceOrderEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.*;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse.CancelPaymentQRLinkReplyEvent;
 import com.mt.saga.domain.model.task.SubTaskStatus;
 import com.mt.saga.domain.model.task.conclude_order_task.ConcludeOrderTask;
 import com.mt.saga.domain.model.task.confirm_order_payment_task.ConfirmOrderPaymentTask;
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class TaskApplicationService {
     @Autowired
     private RedissonClient redissonClient;
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CreateOrderTask createCreateOrderTask(UserPlaceOrderEvent customerOrder) {
         String serialize = CommonDomainRegistry.getCustomObjectSerializer().serialize(customerOrder);
@@ -71,7 +73,7 @@ public class TaskApplicationService {
 
     @Transactional
     public void updateCreateNewOrderTask(ClearCartReplyEvent deserialize) {
-        log.debug("before updating task with id {}, acquire lock",deserialize.getTaskId());
+        log.debug("before updating task with id {}, acquire lock", deserialize.getTaskId());
         RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
         lock.lock(5, TimeUnit.SECONDS);
         log.debug("lock acquired");
@@ -89,7 +91,7 @@ public class TaskApplicationService {
 
     @Transactional
     public void updateCreateNewOrderTask(DecreaseOrderStorageReplyEvent deserialize) {
-        log.debug("before updating task with id {}, acquire lock",deserialize.getTaskId());
+        log.debug("before updating task with id {}, acquire lock", deserialize.getTaskId());
         RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
         lock.lock(5, TimeUnit.SECONDS);
         log.debug("lock acquired");
@@ -108,7 +110,7 @@ public class TaskApplicationService {
     @Transactional
     @SubscribeForEvent
     public void updateCreateNewOrderTask(GeneratePaymentQRLinkReplyEvent deserialize) {
-        log.debug("before updating task with id {}, acquire lock",deserialize.getTaskId());
+        log.debug("before updating task with id {}, acquire lock", deserialize.getTaskId());
         RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
         lock.lock(5, TimeUnit.SECONDS);
         log.debug("lock acquired");
@@ -119,7 +121,7 @@ public class TaskApplicationService {
                 e.getGeneratePaymentLinkSubTask().setStatus(SubTaskStatus.COMPLETED);
                 String createBizStateMachineCommand = e.getCreateBizStateMachineCommand();
                 UserPlaceOrderEvent placeOrderEvent = CommonDomainRegistry.getCustomObjectSerializer().deserialize(createBizStateMachineCommand, UserPlaceOrderEvent.class);
-                CreateNewOrderEvent event = new CreateNewOrderEvent(placeOrderEvent, deserialize.getPaymentLink(), e.getId(),e.getChangeId());
+                CreateNewOrderEvent event = new CreateNewOrderEvent(placeOrderEvent, deserialize.getPaymentLink(), e.getId(), e.getForwardChangeId());
                 DomainEventPublisher.instance().publish(event);
             } else {
                 e.getGeneratePaymentLinkSubTask().setStatus(SubTaskStatus.FAILED);
@@ -131,7 +133,7 @@ public class TaskApplicationService {
 
     @Transactional
     public void updateCreateNewOrderTask(CreateNewOrderReplyEvent deserialize) {
-        log.debug("before updating task with id {}, acquire lock",deserialize.getTaskId());
+        log.debug("before updating task with id {}, acquire lock", deserialize.getTaskId());
         RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
         lock.lock(5, TimeUnit.SECONDS);
         log.debug("lock acquired");
@@ -143,6 +145,24 @@ public class TaskApplicationService {
             } else {
                 e.getCreateOrderSubTask().setStatus(SubTaskStatus.FAILED);
                 e.getCreateOrderSubTask().setResult(false);
+            }
+            e.checkAllSubTaskStatus();
+            DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(e);
+        });
+    }
+
+    @Transactional
+    public void updateCreateNewOrderTask(CancelPaymentQRLinkReplyEvent deserialize) {
+        log.debug("before updating task with id {}, acquire lock", deserialize.getTaskId());
+        RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
+        lock.lock(5, TimeUnit.SECONDS);
+        log.debug("lock acquired");
+        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
+        byIdLocked.ifPresent(e -> {
+            if (deserialize.isSuccess()) {
+                e.getCreateOrderSubTask().setStatus(SubTaskStatus.CANCELLED);
+            } else {
+                e.getCreateOrderSubTask().setStatus(SubTaskStatus.FAILED);
             }
             e.checkAllSubTaskStatus();
             DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(e);

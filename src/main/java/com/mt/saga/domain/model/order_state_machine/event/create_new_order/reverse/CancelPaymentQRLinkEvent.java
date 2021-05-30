@@ -8,9 +8,9 @@ public class CancelPaymentQRLinkEvent extends DomainEvent {
     private String orderId;
     private String changeId;
     private String cancelChangeId;
-    private String taskId;
+    private long taskId;
 
-    public CancelPaymentQRLinkEvent(String orderId, String changeId, String taskId) {
+    public CancelPaymentQRLinkEvent(String orderId, String changeId, long taskId,String cancelChangeId) {
         this.orderId = orderId;
         this.changeId = changeId;
         this.taskId = taskId;

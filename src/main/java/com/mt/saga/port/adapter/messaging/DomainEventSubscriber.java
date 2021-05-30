@@ -7,6 +7,8 @@ import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forwa
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.CreateNewOrderReplyEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.DecreaseOrderStorageReplyEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.GeneratePaymentQRLinkReplyEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse.CancelPaymentQRLinkEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse.CancelPaymentQRLinkReplyEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -21,6 +23,7 @@ public class DomainEventSubscriber {
     private static final String TASK_UPDATE_QUEUE_NAME3 = "create_new_order_reply_event_handler";
     private static final String TASK_UPDATE_QUEUE_NAME4 = "decrease_sku_for_order_reply_event_handler";
     private static final String TASK_UPDATE_QUEUE_NAME6 = "generate_order_payment_link_reply_event_handler";
+    private static final String TASK_UPDATE_QUEUE_NAME7 = "cancel_order_payment_link_reply_event_handler";
     @Value("${mt.app.name.mt2}")
     private String profileAppName;
     @Value("${mt.app.name.mt3}")
@@ -71,6 +74,14 @@ public class DomainEventSubscriber {
             GeneratePaymentQRLinkReplyEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), GeneratePaymentQRLinkReplyEvent.class);
             ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
         }, "generate_order_payment_link_reply_event");
+    }
+    @EventListener(ApplicationReadyEvent.class)
+    private void listener7() {
+        CommonDomainRegistry.getEventStreamService().subscribe(paymentAppName, false, TASK_UPDATE_QUEUE_NAME7, (event) -> {
+            log.debug("handling generate_order_payment_link_reply_event with id {}", event.getId());
+            CancelPaymentQRLinkReplyEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), CancelPaymentQRLinkReplyEvent.class);
+            ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
+        }, "cancel_order_payment_link_reply_event");
     }
 
 }

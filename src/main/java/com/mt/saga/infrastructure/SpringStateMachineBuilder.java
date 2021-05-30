@@ -344,14 +344,14 @@ public class SpringStateMachineBuilder implements OrderStateMachineBuilder {
             if (!b)
                 throw new BizOrderInvalidException();
             bizTx.getValidateOrderSubTask().setStatus(SubTaskStatus.COMPLETED);
-            DomainEventPublisher.instance().publish(new GeneratePaymentQRLinkEvent(command.getOrderId(), bizTx.getChangeId(),bizTx.getId().toString()));
+            DomainEventPublisher.instance().publish(new GeneratePaymentQRLinkEvent(command.getOrderId(), bizTx.getForwardChangeId(),bizTx.getId().toString()));
             DomainEventPublisher.instance().publish(
                     new DecreaseOrderStorageEvent(
                             DomainRegistry.getProductService().getReserveOrderPatchCommands(command.getProductList()),
-                            bizTx.getChangeId(),
+                            bizTx.getForwardChangeId(),
                             bizTx.getId()
                     ));
-            DomainEventPublisher.instance().publish(new ClearCartEvent(command.getUserId(), collect, bizTx.getChangeId(), bizTx.getId()));
+            DomainEventPublisher.instance().publish(new ClearCartEvent(command.getUserId(), collect, bizTx.getForwardChangeId(), bizTx.getId()));
             DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(bizTx);
             return true;
         };

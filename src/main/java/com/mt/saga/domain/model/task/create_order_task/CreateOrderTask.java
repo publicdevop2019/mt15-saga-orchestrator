@@ -1,16 +1,12 @@
 package com.mt.saga.domain.model.task.create_order_task;
 
 import com.mt.common.domain.CommonDomainRegistry;
-import com.mt.common.domain.model.audit.Auditable;
 import com.mt.saga.domain.model.task.SubTaskStatus;
 import com.mt.saga.domain.model.task.TaskName;
 import com.mt.saga.domain.model.task.TaskStatus;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.annotation.LastModifiedDate;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -35,10 +31,10 @@ public class CreateOrderTask implements Serializable {
     @Convert(converter = TaskStatus.DBConverter.class)
     private TaskStatus taskStatus;
 
-    private String changeId;
+    private String forwardChangeId;
     private String orderId;
 
-    private String cancelTaskId;
+    private String reverseChangeId;
     private boolean cancelBlocked = false;
     @Lob
     private String createBizStateMachineCommand;
@@ -63,9 +59,9 @@ public class CreateOrderTask implements Serializable {
         this.id = CommonDomainRegistry.getUniqueIdGeneratorService().id();
         this.taskName = TaskName.CREATE_ORDER;
         this.taskStatus = TaskStatus.STARTED;
-        this.changeId = changeId;
+        this.forwardChangeId = changeId;
         this.orderId = orderId;
-        this.cancelTaskId = changeId + "_cancel";
+        this.reverseChangeId = changeId + "_cancel";
         createBizStateMachineCommand = command;
         createOrderSubTask = new SaveCreatedOrderSubTask();
         generatePaymentLinkSubTask = new GeneratePaymentLinkSubTask();
@@ -87,6 +83,13 @@ public class CreateOrderTask implements Serializable {
                 || validateOrderSubTask.getStatus().equals(SubTaskStatus.FAILED)
                 || generatePaymentLinkSubTask.getStatus().equals(SubTaskStatus.FAILED)){
             setTaskStatus(TaskStatus.FAILED);
+        }
+        if(createOrderSubTask.getStatus().equals(SubTaskStatus.CANCELLED)
+                && decreaseOrderStorageSubTaskStatus.equals(SubTaskStatus.CANCELLED)
+                && removeItemsFromCartSubTaskStatus.equals(SubTaskStatus.CANCELLED)
+                && validateOrderSubTask.getStatus().equals(SubTaskStatus.CANCELLED)
+                && generatePaymentLinkSubTask.getStatus().equals(SubTaskStatus.CANCELLED)){
+            setTaskStatus(TaskStatus.CANCELLED);
         }
     }
 }

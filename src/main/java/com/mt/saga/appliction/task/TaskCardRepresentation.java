@@ -24,6 +24,6 @@ public class TaskCardRepresentation {
         BeanUtils.copyProperties(bizTask, this);
         this.taskName = bizTask.getTaskName();
         this.taskStatus = bizTask.getTaskStatus();
-        this.transactionId = bizTask.getChangeId();
+        this.transactionId = bizTask.getForwardChangeId();
     }
 }
