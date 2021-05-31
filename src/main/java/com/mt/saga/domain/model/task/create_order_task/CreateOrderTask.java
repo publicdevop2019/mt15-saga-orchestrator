@@ -35,7 +35,7 @@ public class CreateOrderTask implements Serializable {
     private String orderId;
 
     private String reverseChangeId;
-    private boolean cancelBlocked = false;
+    private boolean acknowledged = false;
     @Lob
     private String createBizStateMachineCommand;
     @Embedded

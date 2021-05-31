@@ -5,6 +5,7 @@ import com.mt.saga.domain.model.task.*;
 import com.mt.saga.domain.model.task.conclude_order_task.ConcludeOrderTaskRepository;
 import com.mt.saga.domain.model.task.confirm_order_payment_task.ConfirmOrderPaymentTaskRepository;
 import com.mt.saga.domain.model.task.create_order_task.CreateOrderTaskRepository;
+import com.mt.saga.domain.model.task.create_order_task.CreateOrderTaskService;
 import com.mt.saga.domain.model.task.recycle_order_task.RecycleOrderTaskRepository;
 import com.mt.saga.domain.model.task.reserve_order_task.ReserveOrderTaskRepository;
 import com.mt.saga.port.adapter.persistence.task.SpringDataJpaCreateOrderTaskRepository;
@@ -36,7 +37,13 @@ public class DomainRegistry {
     private static PaymentService paymentService;
     @Getter
     private static ProductService productService;
+    @Getter
+    private static CreateOrderTaskService createOrderTaskService;
 
+    @Autowired
+    private void setCreateOrderTaskService(CreateOrderTaskService createOrderTaskService) {
+        DomainRegistry.createOrderTaskService = createOrderTaskService;
+    }
     @Autowired
     private void setOrderService(OrderService orderService) {
         DomainRegistry.orderService = orderService;

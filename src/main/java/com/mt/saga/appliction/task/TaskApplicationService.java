@@ -7,6 +7,9 @@ import com.mt.saga.domain.DomainRegistry;
 import com.mt.saga.domain.model.order_state_machine.event.UserPlaceOrderEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.*;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse.CancelPaymentQRLinkReplyEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse.DeleteNewOrderReplyEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse.IncreaseOrderStorageReplyEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse.RestoreCartReplyEvent;
 import com.mt.saga.domain.model.task.SubTaskStatus;
 import com.mt.saga.domain.model.task.conclude_order_task.ConcludeOrderTask;
 import com.mt.saga.domain.model.task.confirm_order_payment_task.ConfirmOrderPaymentTask;
@@ -73,10 +76,7 @@ public class TaskApplicationService {
 
     @Transactional
     public void updateCreateNewOrderTask(ClearCartReplyEvent deserialize) {
-        log.debug("before updating task with id {}, acquire lock", deserialize.getTaskId());
-        RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
-        lock.lock(5, TimeUnit.SECONDS);
-        log.debug("lock acquired");
+        getDixLock(deserialize.getTaskId());
         Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.isSuccess()) {
@@ -91,10 +91,7 @@ public class TaskApplicationService {
 
     @Transactional
     public void updateCreateNewOrderTask(DecreaseOrderStorageReplyEvent deserialize) {
-        log.debug("before updating task with id {}, acquire lock", deserialize.getTaskId());
-        RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
-        lock.lock(5, TimeUnit.SECONDS);
-        log.debug("lock acquired");
+        getDixLock(deserialize.getTaskId());
         Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.isSuccess()) {
@@ -110,10 +107,7 @@ public class TaskApplicationService {
     @Transactional
     @SubscribeForEvent
     public void updateCreateNewOrderTask(GeneratePaymentQRLinkReplyEvent deserialize) {
-        log.debug("before updating task with id {}, acquire lock", deserialize.getTaskId());
-        RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
-        lock.lock(5, TimeUnit.SECONDS);
-        log.debug("lock acquired");
+        getDixLock(deserialize.getTaskId());
         Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.getPaymentLink() != null && !deserialize.getPaymentLink().isBlank()) {
@@ -133,10 +127,7 @@ public class TaskApplicationService {
 
     @Transactional
     public void updateCreateNewOrderTask(CreateNewOrderReplyEvent deserialize) {
-        log.debug("before updating task with id {}, acquire lock", deserialize.getTaskId());
-        RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
-        lock.lock(5, TimeUnit.SECONDS);
-        log.debug("lock acquired");
+        getDixLock(deserialize.getTaskId());
         Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.isSuccess()) {
@@ -153,16 +144,64 @@ public class TaskApplicationService {
 
     @Transactional
     public void updateCreateNewOrderTask(CancelPaymentQRLinkReplyEvent deserialize) {
-        log.debug("before updating task with id {}, acquire lock", deserialize.getTaskId());
-        RLock lock = redissonClient.getLock(deserialize.getTaskId() + "_task");
+        getDixLock(deserialize.getTaskId());
+        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
+        byIdLocked.ifPresent(e -> {
+            if (deserialize.isSuccess()) {
+                e.getGeneratePaymentLinkSubTask().setStatus(SubTaskStatus.CANCELLED);
+            } else {
+//                e.getGeneratePaymentLinkSubTask().setStatus(SubTaskStatus.FAILED);
+            }
+            e.checkAllSubTaskStatus();
+            DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(e);
+        });
+    }
+    @Transactional
+    public void updateCreateNewOrderTask(IncreaseOrderStorageReplyEvent deserialize) {
+        getDixLock(deserialize.getTaskId());
+        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
+        byIdLocked.ifPresent(e -> {
+            if (deserialize.isSuccess()) {
+                e.setDecreaseOrderStorageSubTaskStatus(SubTaskStatus.CANCELLED);
+            } else {
+//                e.setDecreaseOrderStorageSubTaskStatus(SubTaskStatus.FAILED);
+            }
+            e.checkAllSubTaskStatus();
+            DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(e);
+        });
+    }
+
+    private void getDixLock(long taskId) {
+        log.debug("before updating task with id {}, acquire lock", taskId);
+        RLock lock = redissonClient.getLock(taskId + "_task");
         lock.lock(5, TimeUnit.SECONDS);
         log.debug("lock acquired");
+    }
+
+    @Transactional
+    public void updateCreateNewOrderTask(RestoreCartReplyEvent deserialize) {
+        getDixLock(deserialize.getTaskId());
+        Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
+        byIdLocked.ifPresent(e -> {
+            if (deserialize.isSuccess()) {
+                e.setRemoveItemsFromCartSubTaskStatus(SubTaskStatus.CANCELLED);
+            } else {
+//                e.setRemoveItemsFromCartSubTaskStatus(SubTaskStatus.FAILED);
+            }
+            e.checkAllSubTaskStatus();
+            DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(e);
+        });
+    }
+
+    @Transactional
+    public void updateCreateNewOrderTask(DeleteNewOrderReplyEvent deserialize) {
+        getDixLock(deserialize.getTaskId());
         Optional<CreateOrderTask> byIdLocked = DomainRegistry.getCreateOrderTaskRepository().getById(deserialize.getTaskId());
         byIdLocked.ifPresent(e -> {
             if (deserialize.isSuccess()) {
                 e.getCreateOrderSubTask().setStatus(SubTaskStatus.CANCELLED);
             } else {
-                e.getCreateOrderSubTask().setStatus(SubTaskStatus.FAILED);
+//                e.getCreateOrderSubTask().setStatus(SubTaskStatus.FAILED);
             }
             e.checkAllSubTaskStatus();
             DomainRegistry.getCreateOrderTaskRepository().createOrUpdate(e);

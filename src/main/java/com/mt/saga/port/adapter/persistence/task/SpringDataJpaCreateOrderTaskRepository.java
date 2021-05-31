@@ -14,8 +14,8 @@ import java.util.Optional;
 
 @Repository
 public interface SpringDataJpaCreateOrderTaskRepository extends JpaRepository<CreateOrderTask, Long>, CreateOrderTaskRepository {
-    @Query("SELECT p FROM #{#entityName} as p WHERE p.createdAt < ?1 AND (p.taskStatus = 'STARTED' OR p.taskStatus = 'FAILED') AND p.cancelBlocked = false")
-    List<CreateOrderTask> findExpiredStartedOrFailNonBlockedTxs(Date from);
+    @Query("SELECT p FROM #{#entityName} as p WHERE p.taskStatus = 'FAILED' AND p.acknowledged = false")
+    List<CreateOrderTask> findFailTxs();
 
     @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
     @Query("SELECT p FROM #{#entityName} as p WHERE p.id = ?1")
@@ -33,7 +33,7 @@ public interface SpringDataJpaCreateOrderTaskRepository extends JpaRepository<Cr
     }
 
     @Override
-    default List<CreateOrderTask> findRollbackTasks(Date from) {
-        return findExpiredStartedOrFailNonBlockedTxs(from);
+    default List<CreateOrderTask> findFailedTasks() {
+        return findFailTxs();
     }
 }

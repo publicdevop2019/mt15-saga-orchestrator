@@ -7,8 +7,7 @@ import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forwa
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.CreateNewOrderReplyEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.DecreaseOrderStorageReplyEvent;
 import com.mt.saga.domain.model.order_state_machine.event.create_new_order.forward.GeneratePaymentQRLinkReplyEvent;
-import com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse.CancelPaymentQRLinkEvent;
-import com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse.CancelPaymentQRLinkReplyEvent;
+import com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -24,6 +23,9 @@ public class DomainEventSubscriber {
     private static final String TASK_UPDATE_QUEUE_NAME4 = "decrease_sku_for_order_reply_event_handler";
     private static final String TASK_UPDATE_QUEUE_NAME6 = "generate_order_payment_link_reply_event_handler";
     private static final String TASK_UPDATE_QUEUE_NAME7 = "cancel_order_payment_link_reply_event_handler";
+    private static final String TASK_UPDATE_QUEUE_NAME8 = "restore_cart_reply_event_handler";
+    private static final String TASK_UPDATE_QUEUE_NAME9 = "delete_new_order_reply_event_handler";
+    private static final String TASK_UPDATE_QUEUE_NAME10 = "increase_sku_for_order_reply_event_handler";
     @Value("${mt.app.name.mt2}")
     private String profileAppName;
     @Value("${mt.app.name.mt3}")
@@ -78,10 +80,33 @@ public class DomainEventSubscriber {
     @EventListener(ApplicationReadyEvent.class)
     private void listener7() {
         CommonDomainRegistry.getEventStreamService().subscribe(paymentAppName, false, TASK_UPDATE_QUEUE_NAME7, (event) -> {
-            log.debug("handling generate_order_payment_link_reply_event with id {}", event.getId());
+            log.debug("handling cancel_order_payment_link_reply_event with id {}", event.getId());
             CancelPaymentQRLinkReplyEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), CancelPaymentQRLinkReplyEvent.class);
             ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
         }, "cancel_order_payment_link_reply_event");
     }
-
+    @EventListener(ApplicationReadyEvent.class)
+    private void listener8() {
+        CommonDomainRegistry.getEventStreamService().subscribe(mallAppName, false, TASK_UPDATE_QUEUE_NAME10, (event) -> {
+            log.debug("handling increase_sku_for_order_reply_event with id {}", event.getId());
+            IncreaseOrderStorageReplyEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), IncreaseOrderStorageReplyEvent.class);
+            ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
+        }, "increase_sku_for_order_reply_event");
+    }
+    @EventListener(ApplicationReadyEvent.class)
+    private void listener9() {
+        CommonDomainRegistry.getEventStreamService().subscribe(profileAppName, false, TASK_UPDATE_QUEUE_NAME8, (event) -> {
+            log.debug("handling clear_cart_reply_event with id {}", event.getId());
+            RestoreCartReplyEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), RestoreCartReplyEvent.class);
+            ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
+        }, "restore_cart_reply_event");
+    }
+    @EventListener(ApplicationReadyEvent.class)
+    private void listener10() {
+        CommonDomainRegistry.getEventStreamService().subscribe(profileAppName, false, TASK_UPDATE_QUEUE_NAME9, (event) -> {
+            log.debug("handling clear_cart_reply_event with id {}", event.getId());
+            DeleteNewOrderReplyEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), DeleteNewOrderReplyEvent.class);
+            ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
+        }, "delete_new_order_reply_event");
+    }
 }

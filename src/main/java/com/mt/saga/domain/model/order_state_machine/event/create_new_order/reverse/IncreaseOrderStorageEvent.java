@@ -2,9 +2,10 @@ package com.mt.saga.domain.model.order_state_machine.event.create_new_order.reve
 
 import com.mt.common.domain.model.domain_event.DomainEvent;
 import com.mt.common.domain.model.restful.PatchCommand;
+import lombok.Setter;
 
 import java.util.List;
-
+@Setter
 public class IncreaseOrderStorageEvent extends DomainEvent {
     private List<PatchCommand> skuCommands;
     private String changeId;

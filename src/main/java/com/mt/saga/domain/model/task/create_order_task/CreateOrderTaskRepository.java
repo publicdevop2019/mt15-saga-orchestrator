@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CreateOrderTaskRepository {
-    List<CreateOrderTask> findRollbackTasks(Date from);
+    List<CreateOrderTask> findFailedTasks();
 
     void createOrUpdate(CreateOrderTask createOrderTask);
 
