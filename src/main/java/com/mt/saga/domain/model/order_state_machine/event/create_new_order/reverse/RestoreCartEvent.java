@@ -1,11 +1,13 @@
 package com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse;
 
 import com.mt.common.domain.model.domain_event.DomainEvent;
+import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Set;
 
 @Setter
+@Getter
 public class RestoreCartEvent extends DomainEvent {
     private String userId;
     private Set<String> ids;

@@ -1,9 +1,11 @@
 package com.mt.saga.domain.model.order_state_machine.event.create_new_order.reverse;
 
 import com.mt.common.domain.model.domain_event.DomainEvent;
+import lombok.Getter;
 import lombok.Setter;
 
 @Setter
+@Getter
 public class CancelPaymentQRLinkEvent extends DomainEvent {
     private String orderId;
     private String changeId;
