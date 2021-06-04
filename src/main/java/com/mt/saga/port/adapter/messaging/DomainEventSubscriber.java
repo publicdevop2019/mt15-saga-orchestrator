@@ -104,7 +104,7 @@ public class DomainEventSubscriber {
     @EventListener(ApplicationReadyEvent.class)
     private void listener10() {
         CommonDomainRegistry.getEventStreamService().subscribe(profileAppName, false, TASK_UPDATE_QUEUE_NAME9, (event) -> {
-            log.debug("handling clear_cart_reply_event with id {}", event.getId());
+            log.debug("handling delete_new_order_reply_event with id {}", event.getId());
             DeleteNewOrderReplyEvent deserialize = CommonDomainRegistry.getCustomObjectSerializer().deserialize(event.getEventBody(), DeleteNewOrderReplyEvent.class);
             ApplicationServiceRegistry.getTaskApplicationService().updateCreateNewOrderTask(deserialize);
         }, "delete_new_order_reply_event");
